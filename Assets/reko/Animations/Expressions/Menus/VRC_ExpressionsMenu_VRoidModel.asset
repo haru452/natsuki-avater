@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -340790334, guid: 67cc4cb7839cd3741b63733d5adf0442, type: 3}
+  m_Name: VRC_ExpressionsMenu_VRoidModel
+  m_EditorClassIdentifier: 
+  Parameters: {fileID: 11400000, guid: 89efeae930ad56948af6c38d5327c70b, type: 2}
+  controls:
+  - name: Happy
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: FixFace
+    value: 3
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
+  - name: Angry
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: FixFace
+    value: 4
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
+  - name: Sad
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: FixFace
+    value: 5
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
+  - name: Relaxed
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: FixFace
+    value: 6
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
+  - name: Surprised
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: FixFace
+    value: 7
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
+  - name: "\u71C3\u3048\u308B"
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: Fire
+    value: 1
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []

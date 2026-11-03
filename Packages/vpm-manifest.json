@@ -1,0 +1,36 @@
+{
+  "dependencies": {
+    "com.vrchat.base": {
+      "version": "3.10.3"
+    },
+    "com.vrchat.avatars": {
+      "version": "3.10.3"
+    },
+    "com.vrchat.core.vpm-resolver": {
+      "version": "0.1.29"
+    },
+    "com.pixiv.vroid.xwear": {
+      "version": "0.3.4"
+    }
+  },
+  "locked": {
+    "com.vrchat.base": {
+      "version": "3.10.3",
+      "dependencies": {}
+    },
+    "com.vrchat.avatars": {
+      "version": "3.10.3",
+      "dependencies": {
+        "com.vrchat.base": "3.10.3"
+      }
+    },
+    "com.vrchat.core.vpm-resolver": {
+      "version": "0.1.29",
+      "dependencies": {}
+    },
+    "com.pixiv.vroid.xwear": {
+      "version": "0.3.4",
+      "dependencies": {}
+    }
+  }
+}

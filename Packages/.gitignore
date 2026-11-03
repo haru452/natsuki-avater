@@ -1,0 +1,7 @@
+/*/
+com.vrchat.*/
+!com.vrchat.core.*/
+!vpm-manifest.json
+!manifest.json
+# VRM packages are embedded (not in vpm-manifest), so VCC cannot restore them
+!com.vrmc.*/
