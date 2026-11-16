@@ -8,8 +8,7 @@ only clears (KAT_Pointer = 255) and writes. Each group sends the pointer before 
 because KAT keeps writing the CharSync floats into whichever slot the pointer names.
 
 send() writes once. Synced parameters only carry the latest value, so players who join later
-see only the last group. The phone script should keep cycling the pointer over all groups
-while a line is shown (TODO for the phone-side tool).
+see only the last group; the phone's display keeps rewriting a shown line (clear=False) for them.
 """
 import socket
 import struct
@@ -18,7 +17,8 @@ import unicodedata
 
 TEXT_LIMIT = 128
 CLEAR_POINTER = 255
-SYNC_CHOICES = (1, 2, 4, 8, 16)
+# Must match TranslatorConfig.KatSyncChoices on the avatar side.
+SYNC_CHOICES = (4, 8, 16)
 PARAM_PREFIX = "/avatar/parameters/"
 
 _ROWS = {
@@ -86,24 +86,75 @@ def code_to_float(code):
     return (code - 256 if code > 127 else code) / 127.0
 
 
-def osc_message(address, value):
-    def pad(raw):
-        return raw + b"\x00" * (4 - len(raw) % 4)
-
-    head = pad(address.encode("ascii"))
-    if isinstance(value, bool):
-        return head + pad(b",T" if value else b",F")
-    if isinstance(value, int):
-        return head + pad(b",i") + struct.pack(">i", value)
-    return head + pad(b",f") + struct.pack(">f", value)
+def _pad(raw):
+    return raw + b"\x00" * (4 - len(raw) % 4)
 
 
-def build_messages(text, sync=8):
-    """Groups of OSC messages in send order. Wait between groups so each one syncs."""
+def osc_message(address, *values):
+    """One OSC message. Values may be bool, int, float or str (sent as UTF-8)."""
+    tags = b","
+    body = b""
+    for value in values:
+        if isinstance(value, bool):
+            tags += b"T" if value else b"F"
+        elif isinstance(value, int):
+            tags += b"i"
+            body += struct.pack(">i", value)
+        elif isinstance(value, float):
+            tags += b"f"
+            body += struct.pack(">f", value)
+        elif isinstance(value, str):
+            tags += b"s"
+            body += _pad(value.encode("utf-8"))
+        else:
+            raise TypeError(f"unsupported OSC value: {value!r}")
+    return _pad(address.encode("ascii")) + _pad(tags) + body
+
+
+def _read_string(data, pos):
+    end = data.find(b"\x00", pos)
+    if end < 0:
+        raise ValueError("unterminated OSC string")
+    return data[pos:end].decode("utf-8"), (end // 4 + 1) * 4
+
+
+def parse_message(data):
+    """(address, [values]) from one OSC message. Raises ValueError on anything malformed."""
+    try:
+        address, pos = _read_string(data, 0)
+        if not address.startswith("/"):
+            raise ValueError("OSC address must start with /")
+        tags, pos = _read_string(data, pos)
+        if not tags.startswith(","):
+            raise ValueError("missing OSC type tags")
+        values = []
+        for tag in tags[1:]:
+            if tag in "TF":
+                values.append(tag == "T")
+            elif tag in "if":
+                if pos + 4 > len(data):
+                    raise ValueError("truncated OSC argument")
+                values.append(struct.unpack(">i" if tag == "i" else ">f", data[pos:pos + 4])[0])
+                pos += 4
+            elif tag == "s":
+                text, pos = _read_string(data, pos)
+                values.append(text)
+            else:
+                raise ValueError(f"unsupported OSC type tag {tag!r}")
+        return address, values
+    except UnicodeDecodeError as error:
+        raise ValueError(str(error)) from error
+
+
+def build_messages(text, sync=8, clear=True):
+    """
+    Groups of OSC messages in send order. Wait between groups so each one syncs.
+    clear=False rewrites the same slots without wiping first (periodic resends, no flicker).
+    """
     if sync not in SYNC_CHOICES:
         raise ValueError(f"sync must be one of {SYNC_CHOICES}, got {sync}")
     codes = encode_text(text)
-    groups = [[osc_message(PARAM_PREFIX + "KAT_Pointer", CLEAR_POINTER)]]
+    groups = [[osc_message(PARAM_PREFIX + "KAT_Pointer", CLEAR_POINTER)]] if clear else []
     for start in range(0, len(codes), sync):
         chunk = codes[start:start + sync]
         chunk += [0] * (sync - len(chunk))

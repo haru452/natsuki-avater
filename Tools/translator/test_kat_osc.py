@@ -68,7 +68,34 @@ class OscTests(unittest.TestCase):
         self.assertEqual(kat_osc.osc_message("/abc", True), b"/abc\x00\x00\x00\x00,T\x00\x00")
 
 
+class ParseTests(unittest.TestCase):
+    def test_round_trip_each_type(self):
+        for value in (True, False, 7, -3, 0.5, "おはよう Hi"):
+            address, args = kat_osc.parse_message(kat_osc.osc_message("/a/b", value))
+            self.assertEqual(address, "/a/b")
+            self.assertEqual(args, [value])
+
+    def test_several_arguments(self):
+        data = kat_osc.osc_message("/chatbox/input", "hello", True, False)
+        self.assertEqual(kat_osc.parse_message(data), ("/chatbox/input", ["hello", True, False]))
+
+    def test_broken_packets_raise_value_error(self):
+        for data in (b"", b"/a", b"/a\x00\x00", b"/a\x00\x00,i\x00\x00\x00\x01", b"/a\x00\x00,x\x00\x00", b"\xff\xfe\x00\x00,i\x00\x00"):
+            with self.assertRaises(ValueError, msg=data):
+                kat_osc.parse_message(data)
+
+
 class GroupTests(unittest.TestCase):
+    def test_rewrite_without_clear(self):
+        groups = kat_osc.build_messages("Good morning", sync=8, clear=False)
+        self.assertEqual(len(groups), 2)
+        self.assertEqual(groups[0][0], kat_osc.osc_message("/avatar/parameters/KAT_Pointer", 1))
+
+    def test_sync_choices_match_the_prefab(self):
+        self.assertEqual(kat_osc.SYNC_CHOICES, (4, 8, 16))
+        with self.assertRaises(ValueError):
+            kat_osc.build_messages("a", sync=2)
+
     def test_groups(self):
         groups = kat_osc.build_messages("Good morning", sync=8)
         self.assertEqual(len(groups), 3)
