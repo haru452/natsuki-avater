@@ -34,8 +34,10 @@ public class TranslatorPrefabTests
     {
         foreach (var path in new[]
                  {
-                     "Pet_Target",
-                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Block", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Face",
+                     "Pet_Root/Pet_Heading/Pet_Target", "Pet_Gaze/GazeRay",
+                     "Pet_Root/Pet_Follow/Pet_Hearts", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/PatZone",
+                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/Head", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/Visor",
+                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/EyeL", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/EyeR",
                      "Pet_Root/Pet_Follow/Pet_Text/KillFrenzyAvatarText/Constraint/Text",
                      "Sign_Root/Sign_Board/Front", "Sign_Root/Sign_Board/Back",
                  })
@@ -49,20 +51,51 @@ public class TranslatorPrefabTests
         Assert.IsTrue(prefab.activeSelf);
         Assert.IsFalse(Find(C.PetRootName).gameObject.activeSelf);
         Assert.IsFalse(Find(C.SignRootName).gameObject.activeSelf);
-        Assert.IsFalse(Find(C.PetTargetName).gameObject.activeSelf, "its contact is off while the toggle is off");
+        Assert.IsFalse(Find(C.GazeName).gameObject.activeSelf, "its contact is off while the toggle is off");
     }
 
     [Test]
-    public void Prefab_BlockSizeAndPlacement()
+    public void Prefab_RobotSizeAndPlacement()
     {
-        Assert.AreEqual(new Vector3(0.5f, 0f, 0f), Find(C.PetTargetName).localPosition, "waits at the right");
+        Assert.AreEqual(new Vector3(0.5f, 0f, 0f), Find("Pet_Root/Pet_Heading/Pet_Target").localPosition, "waits at the right");
         Assert.AreEqual(Vector3.zero, Find(C.PetRootName).localPosition);
         Assert.AreEqual(new Vector3(0.5f, 0f, 0f), Find("Pet_Root/Pet_Follow").localPosition, "starts where it waits");
         Assert.AreEqual(Vector3.zero, Find("Pet_Root/Pet_Follow/Pet_Hop").localPosition, "hops from the ground");
-        var block = Find("Pet_Root/Pet_Follow/Pet_Hop/Pet_Block");
-        Assert.AreEqual(Vector3.one * 0.25f, block.localScale);
-        Assert.AreEqual(0f, block.localPosition.y - block.localScale.y / 2, 1e-5f, "bottom on the ground");
-        Assert.AreEqual(0.25f + 0.15f, Find("Pet_Root/Pet_Follow/Pet_Text").localPosition.y, 1e-5f);
+
+        var robot = Find("Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot");
+        var bounds = new Bounds(robot.position, Vector3.zero);
+        foreach (var r in robot.GetComponentsInChildren<MeshRenderer>(true)) bounds.Encapsulate(MeshBounds(r));
+        Assert.AreEqual(0f, bounds.min.y - robot.position.y, 0.005f, "feet on the ground");
+        Assert.AreEqual(C.RobotHeight, bounds.max.y - robot.position.y, 0.005f, "top of the head");
+        Assert.AreEqual(C.RobotHeight + 0.12f, Find("Pet_Root/Pet_Follow/Pet_Text").localPosition.y, 1e-5f,
+            "text floats above the head");
+    }
+
+    [Test]
+    public void Prefab_RobotLooksForward()
+    {
+        const string robot = "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/";
+        var head = Find(robot + "Head");
+        foreach (var eye in new[] { "EyeL", "EyeR" })
+        {
+            var t = Find(robot + eye);
+            Assert.Greater(t.localPosition.z, head.localPosition.z + 0.1f, eye + " sits on the face");
+            Assert.Greater(Vector3.Dot(-t.forward, Vector3.forward), 0.99f, eye + " shows toward the front");
+        }
+        var l = Find(robot + "EyeL").localPosition;
+        var r = Find(robot + "EyeR").localPosition;
+        Assert.AreEqual(new Vector3(-r.x, r.y, r.z), l, "eyes are mirrored");
+    }
+
+    /// <summary>World bounds from mesh and transform; renderer bounds are empty on prefab assets.</summary>
+    static Bounds MeshBounds(MeshRenderer r)
+    {
+        var b = r.GetComponent<MeshFilter>().sharedMesh.bounds;
+        var world = new Bounds(r.transform.TransformPoint(b.center), Vector3.zero);
+        for (int i = 0; i < 8; i++)
+            world.Encapsulate(r.transform.TransformPoint(b.center + Vector3.Scale(b.extents,
+                new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+        return world;
     }
 
     [Test]
@@ -85,7 +118,7 @@ public class TranslatorPrefabTests
         Assert.AreEqual(2, c.Sources.Count);
         Assert.AreEqual(follow, c.Sources[0].SourceTransform, "source 0 is itself: the pose from last frame");
         Assert.AreEqual(1f, c.Sources[0].Weight);
-        Assert.AreEqual(Find(C.PetTargetName), c.Sources[1].SourceTransform);
+        Assert.AreEqual(Find("Pet_Root/Pet_Heading/Pet_Target"), c.Sources[1].SourceTransform);
         Assert.AreEqual(C.FollowWeight, c.Sources[1].Weight);
         Assert.AreEqual(2, prefab.GetComponentsInChildren<VRCParentConstraint>(true).Length, "two constraints in total");
     }
@@ -93,7 +126,7 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_ContactNoticesWhenThePetIsLeftBehind()
     {
-        var r = Find(C.PetTargetName).GetComponent<VRCContactReceiver>();
+        var r = Find("Pet_Root/Pet_Heading/Pet_Target").GetComponent<VRCContactReceiver>();
         Assert.AreEqual(ContactReceiver.ReceiverType.Constant, r.receiverType);
         Assert.AreEqual(C.NearParam, r.parameter);
         Assert.AreEqual(C.CatchUpDistance, r.radius);
@@ -105,6 +138,72 @@ public class TranslatorPrefabTests
         var s = Find("Pet_Root/Pet_Follow").GetComponent<VRCContactSender>();
         CollectionAssert.AreEqual(new[] { C.PetContactTag }, s.collisionTags);
         Assert.AreEqual(C.PetSenderRadius, s.radius);
+    }
+
+    [Test]
+    public void Prefab_HeadingFollowsPositionAndTurnsOnlyWhenAllowed()
+    {
+        var heading = Find("Pet_Root/Pet_Heading");
+        var pos = heading.GetComponent<VRCPositionConstraint>();
+        Assert.AreEqual(prefab.transform, pos.Sources.Single().SourceTransform);
+        Assert.AreEqual(1f, pos.Sources[0].Weight);
+        var rot = heading.GetComponent<VRCRotationConstraint>();
+        Assert.AreEqual(2, rot.Sources.Count);
+        Assert.AreEqual((heading, 1f), (rot.Sources[0].SourceTransform, rot.Sources[0].Weight), "holds its own direction");
+        Assert.AreEqual((prefab.transform, 0f), (rot.Sources[1].SourceTransform, rot.Sources[1].Weight), "the motion layer raises this while walking");
+        Assert.IsFalse(rot.AffectsRotationX || rot.AffectsRotationZ, "stays upright");
+        Assert.IsTrue(pos.IsActive && pos.Locked && rot.IsActive && rot.Locked);
+    }
+
+    [Test]
+    public void Prefab_GazeReachesForwardFromTheHead()
+    {
+        var gaze = Find(C.GazeName);
+        var proxy = gaze.GetComponent<ModularAvatarBoneProxy>();
+        Assert.AreEqual(HumanBodyBones.Head, proxy.boneReference);
+        Assert.AreEqual(BoneProxyAttachmentMode.AsChildKeepRotation, proxy.attachmentMode);
+        var ray = Find("Pet_Gaze/GazeRay");
+        var s = ray.GetComponent<VRCContactSender>();
+        Assert.AreEqual(ContactBase.ShapeType.Capsule, s.shapeType);
+        CollectionAssert.AreEqual(new[] { C.GazeTag }, s.collisionTags);
+        Assert.Greater(Vector3.Dot(ray.up, Vector3.forward), 0.99f, "capsule axis points forward");
+        Assert.Greater(ray.localPosition.z, 0.5f, "starts in front of the face");
+    }
+
+    [Test]
+    public void Prefab_RobotFacesTheWearerWhenLookedAt()
+    {
+        var robot = Find("Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot");
+        var aim = robot.GetComponent<VRCAimConstraint>();
+        Assert.AreEqual(Find(C.GazeName), aim.Sources.Single().SourceTransform);
+        Assert.AreEqual(Vector3.forward, aim.AimAxis);
+        Assert.IsTrue(aim.AffectsRotationY);
+        Assert.IsFalse(aim.AffectsRotationX || aim.AffectsRotationZ, "turns its body, does not tip over");
+        Assert.AreEqual(0f, aim.GlobalWeight, "faces ahead until looked at");
+
+        var look = robot.Find("LookZone").GetComponent<VRCContactReceiver>();
+        CollectionAssert.AreEqual(new[] { C.GazeTag }, look.collisionTags);
+        Assert.AreEqual(C.LookedParam, look.parameter);
+        Assert.IsTrue(look.allowSelf);
+        Assert.IsFalse(look.allowOthers, "only the wearer's own gaze");
+    }
+
+    [Test]
+    public void Prefab_AnyonesHandOnTheHeadMakesHearts()
+    {
+        var pat = Find("Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/PatZone").GetComponent<VRCContactReceiver>();
+        CollectionAssert.AreEquivalent(new[] { "Hand", "Finger" }, pat.collisionTags);
+        Assert.IsTrue(pat.allowSelf && pat.allowOthers, "the wearer and other players");
+        Assert.AreEqual(C.PatParam, pat.parameter);
+        Assert.AreEqual(ContactReceiver.ReceiverType.Constant, pat.receiverType);
+        Assert.Greater(pat.transform.localPosition.y, 0.2f, "on the head");
+
+        var hearts = Find("Pet_Root/Pet_Follow/Pet_Hearts").GetComponent<ParticleSystem>();
+        Assert.IsFalse(hearts.emission.enabled, "quiet until petted");
+        Assert.LessOrEqual(hearts.main.maxParticles, 20);
+        Assert.IsTrue(AnimationUtility.GetAnimatableBindings(hearts.gameObject, prefab)
+            .Any(b => b.type == typeof(ParticleSystem) && b.propertyName == "EmissionModule.enabled"),
+            "the motion layer can switch emission");
     }
 
     [Test]
@@ -181,8 +280,8 @@ public class TranslatorPrefabTests
         Assert.IsTrue(merges.All(m => m.animator != null));
         var kat = merges.Single(m => m.animator.name == "Translator_KAT");
         Assert.AreEqual(Find("Pet_Root/Pet_Follow/Pet_Text").gameObject, kat.gameObject, "KAT controller sits where its clip paths start");
-        var hop = merges.Single(m => m.animator.name == "Translator_Hop");
-        Assert.AreEqual(Find("Pet_Root/Pet_Follow").gameObject, hop.gameObject, "hop clips animate Pet_Hop below it");
+        var motion = merges.Single(m => m.animator.name == "Translator_Motion");
+        Assert.AreEqual(Find(C.PetRootName).gameObject, motion.gameObject, "motion clips are relative to Pet_Root");
     }
 
     [Test]

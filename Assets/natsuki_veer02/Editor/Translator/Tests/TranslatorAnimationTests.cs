@@ -47,7 +47,7 @@ public class TranslatorAnimationTests
     public void Toggle_ClipsDriveBothRoots()
     {
         var c = TranslatorAnimationBuilder.BuildToggleController(Dir);
-        foreach (var path in new[] { C.PetRootName, C.SignRootName, C.PetTargetName })
+        foreach (var path in new[] { C.PetRootName, C.SignRootName, C.GazeName })
         {
             Assert.AreEqual(1f, ActiveValue(State(c, "On"), path), path);
             Assert.AreEqual(1f, ActiveValue(State(c, "Appear"), path), path);

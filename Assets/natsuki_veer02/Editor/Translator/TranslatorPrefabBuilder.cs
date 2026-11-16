@@ -32,15 +32,21 @@ public static class TranslatorPrefabBuilder
             root.AddComponent<ModularAvatarMenuInstaller>().menuToAppend = BuildMenus(outputDir);
             AddMerge(root, TranslatorAnimationBuilder.BuildToggleController(outputDir));
 
-            var target = Child(root.transform, C.PetTargetName, C.PetOffset);
             var pet = Child(root.transform, C.PetRootName, Vector3.zero);
+            var heading = Child(pet.transform, C.PetHeadingName, Vector3.zero);
+            TranslatorReactionsBuilder.AddHeading(heading, root.transform);
+            var target = Child(heading.transform, C.PetTargetName, C.PetOffset);
             var follow = Child(pet.transform, C.PetFollowName, C.PetOffset);
             AddFollowConstraints(pet, follow, target.transform);
             AddCatchUpContact(target, follow);
             var hop = Child(follow.transform, C.PetHopName, Vector3.zero);
-            BuildBlock(hop.transform, outputDir);
-            AddMerge(follow, TranslatorMotionBuilder.BuildHopController(outputDir));
-            var text = Child(follow.transform, C.TextName, new Vector3(0, C.BlockSize + C.TextHeightAboveBlock, 0));
+            var robot = TranslatorRobotBuilder.Build(hop.transform, outputDir);
+            var gaze = TranslatorReactionsBuilder.AddGaze(root.transform);
+            TranslatorReactionsBuilder.AddFacing(robot, gaze.transform);
+            TranslatorReactionsBuilder.AddPatZone(robot);
+            TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir);
+            AddMerge(pet, TranslatorMotionBuilder.BuildMotionController(outputDir));
+            var text = Child(follow.transform, C.TextName, new Vector3(0, C.RobotHeight + C.TextHeightAboveRobot, 0));
             BuildKatText(text.transform);
             AddMerge(text, TranslatorAnimationBuilder.BuildKatController(outputDir, katSyncCount));
 
@@ -53,7 +59,7 @@ public static class TranslatorPrefabBuilder
 
             pet.SetActive(false);
             sign.SetActive(false);
-            target.SetActive(false);
+            gaze.SetActive(false);
 
             string path = outputDir + "/" + C.PrefabName;
             PrefabUtility.SaveAsPrefabAsset(root, path);
@@ -183,21 +189,6 @@ public static class TranslatorPrefabBuilder
         // Write now: later steps delete and import other assets in this folder before the final save.
         AssetDatabase.SaveAssetIfDirty(menu);
         return menu;
-    }
-
-    static void BuildBlock(Transform pet, string outputDir)
-    {
-        var block = Primitive(PrimitiveType.Cube, C.BlockName, pet);
-        block.transform.localPosition = new Vector3(0, C.BlockSize / 2, 0);
-        block.transform.localScale = Vector3.one * C.BlockSize;
-        block.GetComponent<MeshRenderer>().sharedMaterial = TranslatorAssetGenerator.BlockMaterial(outputDir);
-
-        // Avatars face +Z; a Quad shows its face toward -Z, so turn it around to face the viewer.
-        var face = Primitive(PrimitiveType.Quad, C.FaceName, pet);
-        face.transform.localPosition = new Vector3(0, C.BlockSize / 2, C.BlockSize / 2 + 0.002f);
-        face.transform.localRotation = Quaternion.Euler(0, 180, 0);
-        face.transform.localScale = Vector3.one * C.BlockSize * 0.9f;
-        face.GetComponent<MeshRenderer>().sharedMaterial = TranslatorAssetGenerator.FaceMaterial(outputDir);
     }
 
     /// <summary>The same hierarchy KAT's installer makes, so KAT's clips find "KillFrenzyAvatarText/Constraint/Text".</summary>

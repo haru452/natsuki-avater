@@ -21,20 +21,21 @@ public class TranslatorAssetTests
     static int FileCount() => Directory.GetFiles(Dir).Length;
 
     [Test]
-    public void BlockMaterial_IsStandardInOutputDir()
+    public void RobotMaterials_AreSavedAndEyesGlowAsRings()
     {
-        var mat = TranslatorAssetGenerator.BlockMaterial(Dir);
-        Assert.AreEqual("Standard", mat.shader.name);
-        Assert.AreEqual(Dir + "/Pet_Block.mat", AssetDatabase.GetAssetPath(mat));
-    }
-
-    [Test]
-    public void FaceMaterial_HasEyesOnTransparentBackground()
-    {
-        var tex = (Texture2D)TranslatorAssetGenerator.FaceMaterial(Dir).mainTexture;
-        var px = ReadPixels(tex);
-        Assert.IsTrue(px.Any(c => c.a > 0.9f), "eyes are drawn");
-        Assert.IsTrue(px.Any(c => c.a == 0f), "background is transparent");
+        var m = TranslatorRobotBuilder.CreateMaterials(Dir);
+        foreach (var mat in new[] { m.White, m.Dark, m.Grey })
+        {
+            Assert.AreEqual("Standard", mat.shader.name);
+            StringAssert.StartsWith(Dir + "/Robot_", AssetDatabase.GetAssetPath(mat));
+        }
+        Assert.AreEqual("Unlit/Transparent", m.Eye.shader.name, "eyes look lit up in any world");
+        var tex = new Texture2D(2, 2);
+        tex.LoadImage(File.ReadAllBytes(AssetDatabase.GetAssetPath(m.Eye.mainTexture)));
+        Assert.AreEqual(0f, tex.GetPixel(64, 64).a, "hollow in the middle");
+        Assert.AreEqual(1f, tex.GetPixel(64, 64 + 48).a, 0.01f, "solid on the ring");
+        Assert.AreEqual(0f, tex.GetPixel(2, 2).a, "transparent outside");
+        Object.DestroyImmediate(tex);
     }
 
     [Test]
@@ -67,14 +68,12 @@ public class TranslatorAssetTests
     [Test]
     public void Generators_AreIdempotent()
     {
-        TranslatorAssetGenerator.BlockMaterial(Dir);
-        TranslatorAssetGenerator.FaceMaterial(Dir);
+        TranslatorRobotBuilder.CreateMaterials(Dir);
         var sign = TranslatorAssetGenerator.SignMaterial(Dir);
         string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sign));
         int count = FileCount();
 
-        TranslatorAssetGenerator.BlockMaterial(Dir);
-        TranslatorAssetGenerator.FaceMaterial(Dir);
+        TranslatorRobotBuilder.CreateMaterials(Dir);
         var again = TranslatorAssetGenerator.SignMaterial(Dir);
 
         Assert.AreEqual(count, FileCount());

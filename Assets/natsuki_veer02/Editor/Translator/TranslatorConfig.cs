@@ -25,8 +25,7 @@ public static class TranslatorConfig
     public const string PetRootName = "Pet_Root";
     /// <summary>The pet itself: each frame it moves part of the way from its last pose to Pet_Target.</summary>
     public const string PetFollowName = "Pet_Follow";
-    public const string BlockName = "Pet_Block";
-    public const string FaceName = "Pet_Face";
+    public const string RobotName = "Pet_Robot";
     public const string TextName = "Pet_Text";
     public const string SignRootName = "Sign_Root";
     public const string SignBoardName = "Sign_Board";
@@ -38,8 +37,8 @@ public static class TranslatorConfig
     public const string KatTextMaterialResource = "KAT_Misc/KAT_Text";
     public const string KatTilesPath = "Assets/KillFrenzy/AvatarText/Textures/KAT_CharTiles.png";
 
-    public const float BlockSize = 0.25f;
-    public static readonly Color BlockColor = new Color(0.98f, 0.86f, 0.45f);
+    /// <summary>Height of the robot pet, from the ground to the top of its head.</summary>
+    public const float RobotHeight = 0.40f;
     /// <summary>Where the pet waits: the wearer's right, on the ground.</summary>
     public static readonly Vector3 PetOffset = new Vector3(0.5f, 0f, 0f);
 
@@ -60,6 +59,31 @@ public static class TranslatorConfig
     public const string PetContactTag = "TranslatorPetHome";
     public const float PetSenderRadius = 0.05f;
 
+    // Where the pet waits turns with the wearer only while walking, so turning on the spot leaves it be.
+    public const string PetHeadingName = "Pet_Heading";
+    public const string HeadingWeightProperty = "Sources.source1.Weight";
+    public const float MovingHeadingWeight = 1000f;
+
+    // Standing still, the pet ambles forward and back.
+    public const float WanderDistance = 0.15f;
+    public const float WanderSeconds = 8f;
+
+    // Looking at the pet: a capsule from the wearer's head reaches forward; the pet turns to face them.
+    public const string GazeName = "Pet_Gaze";
+    public const string GazeTag = "TranslatorPetGaze";
+    public const string LookedParam = "TranslatorPetLooked";
+    public const float GazeLength = 2.0f;
+    public const float GazeRadius = 0.25f;
+    public const float LookZoneRadius = 0.3f;
+    public const float LookTurnSeconds = 0.3f;
+
+    // Petting the head (anyone's hand) makes hearts.
+    public const string PatParam = "TranslatorPetPat";
+    public static readonly string[] PatTags = { "Hand", "Finger" };
+    public const float PatRadius = 0.15f;
+    public const string HeartsName = "Pet_Hearts";
+    public const float HeartsMinSeconds = 1f;
+
     // Hopping while the wearer moves. VelocityMagnitude is a VRChat built-in parameter (m/s).
     public const string PetHopName = "Pet_Hop";
     public const string VelocityParam = "VelocityMagnitude";
@@ -70,7 +94,7 @@ public static class TranslatorConfig
     /// <summary>Scale on landing (wide and flat) and at the top of the hop (tall and thin).</summary>
     public static readonly Vector3 HopSquash = new Vector3(1.12f, 0.82f, 1.12f);
     public static readonly Vector3 HopStretch = new Vector3(0.94f, 1.1f, 0.94f);
-    public const float TextHeightAboveBlock = 0.15f;
+    public const float TextHeightAboveRobot = 0.12f;
     /// <summary>Size of KAT's text quad (32 characters x 4 rows).</summary>
     public static readonly Vector2 TextSize = new Vector2(0.5f, 1f / 6f);
 

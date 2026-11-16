@@ -110,7 +110,7 @@ public static class TranslatorAnimationBuilder
     static AnimationClip ActiveClip(float active, float? followWeight, float seconds)
     {
         var clip = new AnimationClip();
-        foreach (var path in new[] { TranslatorConfig.PetRootName, TranslatorConfig.SignRootName, TranslatorConfig.PetTargetName })
+        foreach (var path in new[] { TranslatorConfig.PetRootName, TranslatorConfig.SignRootName, TranslatorConfig.GazeName })
             AnimationUtility.SetEditorCurve(clip,
                 EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive"),
                 AnimationCurve.Constant(0f, seconds, active));

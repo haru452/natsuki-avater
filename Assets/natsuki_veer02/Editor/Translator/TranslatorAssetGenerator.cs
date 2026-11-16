@@ -2,45 +2,14 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-/// <summary>Generates the block, face and sign textures and materials.</summary>
+/// <summary>Generates the sign texture and material, and saves PNGs and materials for the other builders.</summary>
 public static class TranslatorAssetGenerator
 {
     const string SignPng = "Sign.png";
-    const int FaceSize = 256;
     const int GlyphHeight = 64;
     const int GlyphWidth = 32;
     const int SignPadding = 24;
     const int SignCorner = 20;
-
-    /// <summary>Plain coloured cube material (Standard shader, so no lilToon needed).</summary>
-    public static Material BlockMaterial(string outputDir)
-    {
-        var mat = new Material(Shader.Find("Standard")) { color = TranslatorConfig.BlockColor };
-        mat.SetFloat("_Glossiness", 0.2f);
-        return SaveMaterial(mat, outputDir + "/Pet_Block.mat");
-    }
-
-    /// <summary>Two eyes on a transparent background, put on the cube's front face.</summary>
-    public static Material FaceMaterial(string outputDir)
-    {
-        var tex = new Texture2D(FaceSize, FaceSize, TextureFormat.RGBA32, false);
-        var eye = new Color(0.12f, 0.1f, 0.1f, 1f);
-        var shine = Color.white;
-        for (int y = 0; y < FaceSize; y++)
-        for (int x = 0; x < FaceSize; x++)
-        {
-            var c = Color.clear;
-            foreach (int cx in new[] { 80, 176 })
-            {
-                float d = Vector2.Distance(new Vector2(x, y), new Vector2(cx, 140));
-                if (d < 22) c = eye;
-                if (Vector2.Distance(new Vector2(x, y), new Vector2(cx + 7, 148)) < 7) c = shine;
-            }
-            tex.SetPixel(x, y, c);
-        }
-        var saved = SavePng(tex, outputDir + "/Pet_Face.png", overwrite: true);
-        return SaveMaterial(UnlitTransparent(saved), outputDir + "/Pet_Face.mat");
-    }
 
     /// <summary>
     /// The "using a translator" sign. The PNG is drawn once from KAT's glyph sheet; an existing
@@ -118,7 +87,7 @@ public static class TranslatorAssetGenerator
 
     static Material UnlitTransparent(Texture tex) => new Material(Shader.Find("Unlit/Transparent")) { mainTexture = tex };
 
-    static Texture2D SavePng(Texture2D tex, string path, bool overwrite)
+    internal static Texture2D SavePng(Texture2D tex, string path, bool overwrite)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         if (overwrite || !File.Exists(path)) File.WriteAllBytes(path, tex.EncodeToPNG());
@@ -132,7 +101,7 @@ public static class TranslatorAssetGenerator
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
-    static Material SaveMaterial(Material mat, string path)
+    internal static Material SaveMaterial(Material mat, string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
