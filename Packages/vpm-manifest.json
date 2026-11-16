@@ -11,6 +11,9 @@
     },
     "com.pixiv.vroid.xwear": {
       "version": "0.3.4"
+    },
+    "nadena.dev.modular-avatar": {
+      "version": "1.18.7"
     }
   },
   "locked": {
@@ -30,6 +33,16 @@
     },
     "com.pixiv.vroid.xwear": {
       "version": "0.3.4",
+      "dependencies": {}
+    },
+    "nadena.dev.modular-avatar": {
+      "version": "1.18.7",
+      "dependencies": {
+        "nadena.dev.ndmf": ">=1.14.7 <2.0.0-a"
+      }
+    },
+    "nadena.dev.ndmf": {
+      "version": "1.14.8",
       "dependencies": {}
     }
   }
