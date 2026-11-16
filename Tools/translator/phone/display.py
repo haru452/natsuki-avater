@@ -112,6 +112,15 @@ class Display:
         if self._chatbox:
             self._safe_send(kat_osc.osc_message("/chatbox/typing", False))
 
+    def clear(self):
+        """Wipe the text (e.g. the "..." when the audio turned out to hold no speech)."""
+        if self._kat:
+            self._reset()
+            self._queue = [[kat_osc.osc_message(POINTER, kat_osc.CLEAR_POINTER)]]
+            self._next = self._clock()
+        if self._chatbox:
+            self._safe_send(kat_osc.osc_message("/chatbox/typing", False))
+
     def stop(self):
         """Forget everything; the avatar's toggle clears the text itself."""
         self._reset()

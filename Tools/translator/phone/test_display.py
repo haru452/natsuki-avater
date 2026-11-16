@@ -167,6 +167,16 @@ class DisplayTests(unittest.TestCase):
         run(self.d, self.clock, 5)
         self.assertEqual(self.rec.take(), [], "nothing more after the error is gone")
 
+    def test_clear_wipes_the_dots(self):
+        self.d.thinking()
+        run(self.d, self.clock, 1)
+        self.rec.take()
+        self.d.clear()
+        run(self.d, self.clock, 1)
+        self.assertEqual(self.rec.take(), [("/avatar/parameters/KAT_Pointer", [255])])
+        run(self.d, self.clock, 5)
+        self.assertEqual(self.rec.take(), [])
+
     def test_stop_sends_nothing_more(self):
         self.d.show(JA)
         run(self.d, self.clock, 0.3)
