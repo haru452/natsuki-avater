@@ -81,6 +81,11 @@ def encode_text(text):
     return codes[:TEXT_LIMIT]
 
 
+def char_width(ch):
+    """How many KAT cells one character takes (2 for katakana written with a separate voicing mark)."""
+    return len(_codes_for(ch))
+
+
 def code_to_float(code):
     """KAT maps codes 0..127 to 0..1 and 129..255 to -1..-1/127."""
     return (code - 256 if code > 127 else code) / 127.0
