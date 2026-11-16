@@ -2,6 +2,7 @@
 import base64
 import dataclasses
 import json
+import re
 import socket
 import time
 import urllib.error
@@ -38,6 +39,12 @@ class GeminiError(Exception):
     pass
 
 
+def valid_key(key):
+    """A Google API key is letters, digits, '-' and '_' only. Anything else (spaces, a newline, a stray
+    quote from copying) would also break the HTTP header, and the error could echo the key."""
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]+", key or ""))
+
+
 @dataclasses.dataclass(frozen=True)
 class Result:
     lang: str
@@ -70,6 +77,12 @@ def build_request(wav, model, api_key):
 def parse_response(body):
     try:
         data = json.loads(body)
+    except ValueError:
+        raise GeminiError("Gemini の返事を読めませんでした: JSONDecodeError") from None
+    blocked = _blocked_reason(data)
+    if blocked:
+        raise GeminiError("Gemini が答えませんでした（%s）" % blocked)
+    try:
         parts = data["candidates"][0]["content"]["parts"]
         text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
         obj = json.loads(text)
@@ -79,6 +92,22 @@ def parse_response(body):
     if result.lang not in LANGS:
         raise GeminiError("Gemini が知らない言語を返しました: %s" % result.lang)
     return result
+
+
+def _blocked_reason(data):
+    """Why Gemini returned no answer (e.g. SAFETY), or None when it answered."""
+    if not isinstance(data, dict):
+        return None
+    feedback = data.get("promptFeedback")
+    if isinstance(feedback, dict) and feedback.get("blockReason"):
+        return str(feedback["blockReason"])
+    candidates = data.get("candidates")
+    if isinstance(candidates, list) and candidates and isinstance(candidates[0], dict):
+        first = candidates[0]
+        reason = first.get("finishReason")
+        if reason and reason not in ("STOP", "MAX_TOKENS") and not first.get("content"):
+            return str(reason)
+    return None
 
 
 def translate(wav, model, api_key, opener=urllib.request.urlopen, sleep=time.sleep):
@@ -108,3 +137,7 @@ def translate(wav, model, api_key, opener=urllib.request.urlopen, sleep=time.sle
                 other_failures += 1
                 continue
             raise GeminiError("Gemini につながりません: %s" % type(error).__name__) from None
+        except GeminiError:
+            raise
+        except Exception as error:  # anything else: its message might quote the request, key included
+            raise GeminiError("Gemini に送れませんでした: %s" % type(error).__name__) from None

@@ -24,6 +24,8 @@ FORWARD_TO_PHONE = {
     kat_osc.PARAM_PREFIX + "TranslatorLocalAI",
     AVATAR_CHANGE,
 }
+# The phone may only write text: the KAT values and the chatbox. Nothing that moves or changes the avatar.
+FROM_PHONE_PREFIXES = (kat_osc.PARAM_PREFIX + "KAT_", "/chatbox/")
 
 
 class Relay:
@@ -33,16 +35,24 @@ class Relay:
         self.vrchat = vrchat
         self.phone_port = phone_port
         self.phone = None
+        self._session = None
         self._latest = {}  # address -> last packet, for a phone that (re)joins
 
     def from_phone(self, data, addr):
         try:
-            address, _ = kat_osc.parse_message(data)
+            address, args = kat_osc.parse_message(data)
         except ValueError:
             return []
         if address == HELLO:
-            self.phone = (addr[0], self.phone_port)
+            phone = (addr[0], self.phone_port)
+            session = args[0] if args else None  # changes each time the phone script starts
+            if phone == self.phone and session == self._session:
+                return []  # already up to date; values go straight to it as they change
+            self.phone = phone
+            self._session = session
             return [(packet, self.phone) for packet in self._latest.values()]
+        if not address.startswith(FROM_PHONE_PREFIXES):
+            return []
         return [(data, self.vrchat)]
 
     def from_vrchat(self, data):
@@ -65,6 +75,14 @@ def describe(data):
     except ValueError:
         return "?"
     return "%s %s" % (address.rsplit("/", 1)[-1], args[0] if args else "")
+
+
+def receive(sock):
+    """One packet, or None when Windows reports that an earlier send went nowhere (WinError 10054)."""
+    try:
+        return sock.recvfrom(65535)
+    except ConnectionResetError:
+        return None
 
 
 def main(phone_listen=("0.0.0.0", 9002), vrchat_listen=("127.0.0.1", 9001)):
@@ -90,7 +108,10 @@ def main(phone_listen=("0.0.0.0", 9002), vrchat_listen=("127.0.0.1", 9001)):
     try:
         while True:
             for key, _ in sel.select(timeout=1.0):
-                data, addr = key.fileobj.recvfrom(65535)
+                packet_in = receive(key.fileobj)
+                if packet_in is None:
+                    continue
+                data, addr = packet_in
                 if key.data == "phone":
                     outgoing = relay.from_phone(data, addr)
                     if relay.phone != known_phone:

@@ -9,6 +9,7 @@ import time
 import kat_osc
 
 ROW = 32
+MAX_BACKLOG = 3
 CHATBOX_LIMIT = 144
 POINTER = kat_osc.PARAM_PREFIX + "KAT_Pointer"
 
@@ -69,7 +70,8 @@ class Display:
     """
     thinking() / show(result) / error() / stop(), then call tick() every ~50 ms.
     A shown page is rewritten (without clearing) every resend_seconds so late joiners get all of it;
-    long text turns to the next page page_seconds after a page is fully written.
+    long text turns to the next page page_seconds after a page is fully written. An answer on screen is
+    never cut short: "...", errors and clears wait, and a newer answer queues behind it.
     """
 
     def __init__(self, send, mode="kat", sync=8, show_original=True, clock=time.monotonic,
@@ -89,7 +91,7 @@ class Display:
     # --- commands -------------------------------------------------------
 
     def thinking(self):
-        if self._kat:
+        if self._kat and not self._busy():
             self._reset()
             self._write("...", clear=True)
         if self._chatbox:
@@ -97,15 +99,18 @@ class Display:
 
     def show(self, result):
         if self._kat:
-            self._reset()
-            self._pages = paginate(compose_kat(result, self._show_original))
-            self._write(self._pages[0], clear=True)
+            pages = paginate(compose_kat(result, self._show_original))
+            if self._busy():
+                # Let the answer on screen finish and be read; this one follows it.
+                self._backlog = (self._backlog + [pages])[-MAX_BACKLOG:]
+            else:
+                self._start(pages)
         if self._chatbox:
             self._safe_send(kat_osc.osc_message("/chatbox/input", compose_chatbox(result, self._show_original), True, False))
             self._safe_send(kat_osc.osc_message("/chatbox/typing", False))
 
     def error(self):
-        if self._kat:
+        if self._kat and not self._busy():
             self._reset()
             self._write("(error)", clear=True)
             self._error_until = self._clock() + self._error_s
@@ -114,7 +119,7 @@ class Display:
 
     def clear(self):
         """Wipe the text (e.g. the "..." when the audio turned out to hold no speech)."""
-        if self._kat:
+        if self._kat and not self._busy():
             self._reset()
             self._queue = [[kat_osc.osc_message(POINTER, kat_osc.CLEAR_POINTER)]]
             self._next = self._clock()
@@ -124,6 +129,7 @@ class Display:
     def stop(self):
         """Forget everything; the avatar's toggle clears the text itself."""
         self._reset()
+        self._backlog = []
 
     # --- timing ---------------------------------------------------------
 
@@ -150,10 +156,28 @@ class Display:
             if now - self._written_at >= self._page_s:
                 self._page += 1
                 self._write(self._pages[self._page], clear=True)
+        elif self._backlog:
+            if now - self._written_at >= self._page_s:
+                self._start(self._backlog.pop(0))
         elif now - self._written_at >= self._resend_s:
             self._write(self._pages[self._page], clear=False)
 
     # --- helpers --------------------------------------------------------
+
+    def _busy(self):
+        """True while an answer is being written, or has not yet been up for page_seconds."""
+        if self._backlog:
+            return True
+        if not self._pages:
+            return False
+        if self._queue or self._written_at is None or self._page < len(self._pages) - 1:
+            return True
+        return self._clock() - self._written_at < self._page_s
+
+    def _start(self, pages):
+        self._reset()
+        self._pages = pages
+        self._write(pages[0], clear=True)
 
     def _reset(self):
         self._queue = []

@@ -60,14 +60,22 @@ class FakeTranslate:
         return outcome
 
 
-def make_app(translate, log_path=None):
+class Clock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+
+def make_app(translate, log_path=None, clock=None):
     fd, path = tempfile.mkstemp(suffix=".tsv")
     os.close(fd)
     os.remove(path)
     s = settings_mod.Settings(log_file=log_path or path, listen_port=0)
     disp = FakeDisplay()
     app = vrc_translator.App(s, mic_factory=None, translate=translate, display=disp,
-                             now=lambda: datetime.datetime(2026, 11, 16, 22, 0, 0))
+                             now=lambda: datetime.datetime(2026, 11, 16, 22, 0, 0), clock=clock or Clock())
     return app, disp, s.log_file
 
 
@@ -180,6 +188,46 @@ class AppTests(unittest.TestCase):
         self.assertTrue(app.active)
         app.on_osc(ACTIVE, [0.0])
         self.assertFalse(app.active)
+
+
+class ReviewFixTests(unittest.TestCase):
+    def test_stale_recordings_are_skipped(self):
+        clock = Clock()
+        t = FakeTranslate(JA, JA)
+        app, disp, log = make_app(t, clock=clock)
+        app.on_osc(ACTIVE, [True])
+        speak(app)
+        clock.now += vrc_translator.STALE_S + 1  # e.g. Gemini was slow for a long time
+        speak(app)
+        drain(app)
+        self.assertEqual(t.calls, 1, "the old one is dropped, the fresh one is translated")
+
+    def test_unexpected_error_message_is_not_printed(self):
+        printed = []
+        app, disp, log = make_app(FakeTranslate(RuntimeError("SECRET-KEY in here")))
+        original = vrc_translator.say
+        vrc_translator.say = printed.append
+        try:
+            app.on_osc(ACTIVE, [True])
+            speak(app)
+            drain(app)
+        finally:
+            vrc_translator.say = original
+        self.assertTrue(printed)
+        self.assertFalse(any("SECRET-KEY" in p for p in printed))
+
+    def test_local_ai_message_only_when_it_changes(self):
+        printed = []
+        app, disp, log = make_app(FakeTranslate())
+        original = vrc_translator.say
+        vrc_translator.say = printed.append
+        try:
+            for _ in range(3):
+                app.on_osc("/avatar/parameters/TranslatorLocalAI", [False])
+            app.on_osc("/avatar/parameters/TranslatorLocalAI", [True])
+        finally:
+            vrc_translator.say = original
+        self.assertEqual(len(printed), 1)
 
 
 class RunTests(unittest.TestCase):

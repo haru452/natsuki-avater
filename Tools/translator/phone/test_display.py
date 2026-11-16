@@ -167,6 +167,30 @@ class DisplayTests(unittest.TestCase):
         run(self.d, self.clock, 5)
         self.assertEqual(self.rec.take(), [], "nothing more after the error is gone")
 
+    def test_back_to_back_results_each_get_shown(self):
+        first = Result("ja", "x", "first answer", "x")
+        second = Result("ja", "y", "second answer", "y")
+        self.d.show(first)
+        run(self.d, self.clock, 0.3)  # only partly written
+        self.d.thinking()             # the next sentence is being translated
+        self.d.show(second)
+        run(self.d, self.clock, 0.8)
+        written = kat_text(self.rec.packets)
+        self.assertEqual(len(written), 16, "the first answer is finished, not replaced by '...'")
+        run(self.d, self.clock, 4.0)
+        self.assertNotIn(("/avatar/parameters/KAT_Pointer", [255]), self.rec.take()[1:], "and stays a while")
+        run(self.d, self.clock, 3.0)
+        later = self.rec.take()
+        self.assertIn(("/avatar/parameters/KAT_Pointer", [255]), later, "then the second answer replaces it")
+
+    def test_error_and_clear_do_not_cut_a_shown_result(self):
+        self.d.show(JA)
+        run(self.d, self.clock, 0.3)
+        self.d.error()
+        self.d.clear()
+        run(self.d, self.clock, 1.5)
+        self.assertEqual(len(kat_text(self.rec.take())), 16, "the answer is still written in full")
+
     def test_clear_wipes_the_dots(self):
         self.d.thinking()
         run(self.d, self.clock, 1)

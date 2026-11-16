@@ -53,6 +53,37 @@ class RelayTests(unittest.TestCase):
         self.r.from_phone(HELLO, ("192.168.1.33", 40000))
         self.assertEqual(self.r.from_vrchat(ACTIVE_ON), [(ACTIVE_ON, ("192.168.1.33", 9001))])
 
+    def test_hello_replays_values_only_for_a_new_phone(self):
+        self.r.from_vrchat(ACTIVE_ON)
+        self.assertEqual(len(self.r.from_phone(HELLO, PHONE)), 1)
+        self.assertEqual(self.r.from_phone(HELLO, PHONE), [], "the same phone again: nothing new")
+
+    def test_restarted_phone_script_gets_the_values_again(self):
+        self.r.from_vrchat(ACTIVE_ON)
+        self.r.from_phone(kat_osc.osc_message("/translator/hello", 111), PHONE)
+        again = self.r.from_phone(kat_osc.osc_message("/translator/hello", 222), PHONE)
+        self.assertEqual(again, [(ACTIVE_ON, PHONE_IN)])
+
+    def test_only_text_messages_reach_vrchat(self):
+        for address, value in (("/avatar/parameters/GestureLeft", 1), ("/input/Jump", 1),
+                               ("/avatar/parameters/TranslatorActive", True)):
+            self.assertEqual(self.r.from_phone(kat_osc.osc_message(address, value), PHONE), [], address)
+
+    def test_windows_connection_reset_does_not_stop_receiving(self):
+        class Sock:
+            def __init__(self):
+                self.calls = 0
+
+            def recvfrom(self, n):
+                self.calls += 1
+                if self.calls == 1:
+                    raise ConnectionResetError(10054, "reset")
+                return b"x", ("1.2.3.4", 5)
+
+        sock = Sock()
+        self.assertIsNone(pc_osc_relay.receive(sock))
+        self.assertEqual(pc_osc_relay.receive(sock), (b"x", ("1.2.3.4", 5)))
+
     def test_broken_packets_are_ignored(self):
         self.assertEqual(self.r.from_vrchat(b"\x00garbage"), [])
         self.assertEqual(self.r.from_phone(b"garbage", PHONE), [])

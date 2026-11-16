@@ -10,6 +10,7 @@ Ctrl+C stops it. See README.md for the setup.
 import datetime
 import os
 import queue
+import random
 import socket
 import sys
 import threading
@@ -28,6 +29,7 @@ LOCAL_AI = kat_osc.PARAM_PREFIX + "TranslatorLocalAI"
 AVATAR_CHANGE = "/avatar/change"
 HELLO = "/translator/hello"
 TICK_S = 0.05
+STALE_S = 20.0  # a recording older than this when its turn comes is skipped: the moment has passed
 
 
 def say(text):
@@ -40,13 +42,15 @@ class App:
     Every part is passed in, so the logic is tested without a phone, a network or Gemini.
     """
 
-    def __init__(self, settings, mic_factory, translate, display, now=datetime.datetime.now, engine="gemini"):
+    def __init__(self, settings, mic_factory, translate, display, now=datetime.datetime.now, engine="gemini",
+                 clock=time.monotonic):
         self.settings = settings
         self._mic_factory = mic_factory
         self._translate = translate
         self._display = display
         self._now = now
         self._engine = engine
+        self._clock = clock
         self._segmenter = voice.Segmenter(**settings.segmenter_args())
         self._queue = queue.Queue()
         self._lock = threading.RLock()
@@ -66,6 +70,8 @@ class App:
         if address == ACTIVE:
             self._set_active(bool(args[0]))
         elif address == LOCAL_AI:
+            if bool(args[0]) == self.local_ai:
+                return
             self.local_ai = bool(args[0])
             say("AI の切り替え: %s（ローカル AI はまだありません。Gemini で訳します）" % ("ローカル" if self.local_ai else "Gemini"))
 
@@ -93,14 +99,17 @@ class App:
             pcm = self._segmenter.feed(frame)
             generation = self._generation
         if pcm is not None:
-            self._queue.put((voice.to_wav(pcm), generation))
+            self._queue.put((voice.to_wav(pcm), generation, self._clock()))
 
     def process_next(self, block=True, timeout=0.5):
         """Translate one queued utterance. False when there was nothing to do."""
         try:
-            wav, generation = self._queue.get(block, timeout)
+            wav, generation, recorded_at = self._queue.get(block, timeout)
         except queue.Empty:
             return False
+        if self._clock() - recorded_at > STALE_S:
+            say("古い録音を飛ばしました（翻訳が混んでいます）")
+            return True
         self._process(wav, generation)
         return True
 
@@ -116,7 +125,7 @@ class App:
             self._if_current(generation, self._display.error)
             return
         except Exception as error:  # never let one bad utterance stop the translator
-            say("予期しないエラー: %s: %s" % (type(error).__name__, error))
+            say("予期しないエラー: %s" % type(error).__name__)  # the message itself might hold the key
             self._if_current(generation, self._display.error)
             return
 
@@ -212,7 +221,7 @@ class App:
             try:
                 self.process_next(timeout=0.2)
             except Exception as error:
-                say("予期しないエラー: %s" % error)
+                say("予期しないエラー: %s" % type(error).__name__)
 
 
 def main():
@@ -227,6 +236,10 @@ def main():
         print("GEMINI_API_KEY がありません。次を実行してから、もう一度起動してください:")
         print('  export GEMINI_API_KEY="（Google AI Studio で作ったキー）"')
         return 1
+    if not gemini.valid_key(key):
+        print("GEMINI_API_KEY の形が正しくありません（空白や改行、引用符が混ざっていませんか）。")
+        print("Google AI Studio でキーをコピーし直して、export し直してください。")
+        return 1
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     relay = (settings.pc_ip, settings.relay_port)
@@ -234,9 +247,11 @@ def main():
     def send(packet):
         sock.sendto(packet, relay)
 
+    session = random.randint(1, 2**31 - 1)  # lets the relay tell a restarted script from the running one
+
     def hello():
         try:
-            send(kat_osc.osc_message(HELLO, True))
+            send(kat_osc.osc_message(HELLO, session))
         except OSError:
             pass  # no Wi-Fi right now; try again later
 

@@ -139,5 +139,30 @@ class TranslateTests(unittest.TestCase):
         self.assertNotIn("SECRET-KEY", str(ctx.exception))
 
 
+class LeakTests(unittest.TestCase):
+    def test_unexpected_errors_become_gemini_errors_without_the_key(self):
+        opener = Opener(ValueError("Invalid header value 'SECRET-KEY\\r\\nX'"))
+        with self.assertRaises(gemini.GeminiError) as ctx:
+            gemini.translate(WAV, "m", "SECRET-KEY", opener=opener, sleep=lambda s: None)
+        self.assertNotIn("SECRET-KEY", str(ctx.exception))
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertTrue(ctx.exception.__suppress_context__)
+
+    def test_key_format_check(self):
+        self.assertTrue(gemini.valid_key("AIzaSyA-abc_123"))
+        for bad in ("", "abc def", "abc\ndef", "キー"):
+            self.assertFalse(gemini.valid_key(bad), bad)
+
+    def test_blocked_reply_says_why(self):
+        body = json.dumps({"promptFeedback": {"blockReason": "SAFETY"}}).encode()
+        with self.assertRaises(gemini.GeminiError) as ctx:
+            gemini.parse_response(body)
+        self.assertIn("SAFETY", str(ctx.exception))
+        body = json.dumps({"candidates": [{"finishReason": "RECITATION"}]}).encode()
+        with self.assertRaises(gemini.GeminiError) as ctx:
+            gemini.parse_response(body)
+        self.assertIn("RECITATION", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
