@@ -86,4 +86,11 @@ class SegmenterTests {
         assertFalse(seg.recording)
         assertEquals(0, feedAll(seg, frames(1.0, quiet)).size)
     }
+
+    // The PC's microphone array suppresses noise to exact zeros, and quiet speech sits around 200-600.
+    @Test fun pcMicHearsQuietSpeech() {
+        val seg = Segmenter(SegmenterSettings.forPcMic())
+        val out = feedAll(seg, frames(1.0, 0) + frames(1.0, 400) + frames(1.0, 0))
+        assertEquals(1, out.size)
+    }
 }

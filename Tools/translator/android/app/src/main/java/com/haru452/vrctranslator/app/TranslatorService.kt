@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.util.Log
 import com.haru452.vrctranslator.core.AudioPacket
 import com.haru452.vrctranslator.core.Rechunker
+import com.haru452.vrctranslator.core.SegmenterSettings
 import com.haru452.vrctranslator.core.Display
 import com.haru452.vrctranslator.core.KatDisplay
 import com.haru452.vrctranslator.core.KuromojiKana
@@ -145,12 +146,13 @@ class TranslatorService : Service() {
         val kana = KuromojiKana().also { it.toKana("準備") }  // load the dictionary now, not on the first sentence
         TranslatorState.status.update { it.copy(models = "できた") }
 
+        val pcMic = settings.micSource == "PC"
+        settings.segmenter = if (pcMic) SegmenterSettings.forPcMic() else SegmenterSettings()
         lateinit var pipeline: OwnVoicePipeline
         val relay = RelayLink({ settings.pcIp }, settings.relayPort, settings.listenPort, { a, args ->
             pipeline.onOsc(a, args)
             TranslatorState.status.update { it.copy(listening = pipeline.active, localAI = pipeline.useLocalAI) }
         })
-        val pcMic = settings.micSource == "PC"
         relay.pcMic = pcMic
         val display = LockedDisplay(KatDisplay(relay::send, settings.display, settings.katSync, settings.showOriginal, ::clock,
             onEvent = ::event)) { r ->

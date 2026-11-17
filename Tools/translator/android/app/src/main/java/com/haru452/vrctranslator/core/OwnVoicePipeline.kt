@@ -43,6 +43,7 @@ class OwnVoicePipeline(
     private val queue = LinkedBlockingQueue<Recording>()
     private var generation = 0  // bumped whenever listening stops, so older recordings are dropped
     private var levelMax = 0f
+    private var voicedFrames = 0
     private var levelSince = Double.NaN
 
     var active = false
@@ -107,11 +108,14 @@ class OwnVoicePipeline(
             // Diagnostics: the loudest frame of the last 5 s against the voice threshold.
             val t = clock()
             if (levelSince.isNaN()) levelSince = t
-            levelMax = maxOf(levelMax, Segmenter.rms(frame))
+            val level = Segmenter.rms(frame)
+            levelMax = maxOf(levelMax, level)
+            if (level > segmenter.threshold) voicedFrames++
             if (t - levelSince >= 5.0) {
-                report = "音量: 最大 ${levelMax.toInt()} / しきい値 ${segmenter.threshold.toInt()}" +
+                report = "音量: 最大 ${levelMax.toInt()} / しきい値 ${segmenter.threshold.toInt()} / 声 $voicedFrames フレーム" +
                     (if (segmenter.recording) "（録音中）" else "")
                 levelMax = 0f
+                voicedFrames = 0
                 levelSince = t
             }
             segmenter.feed(frame)?.let { Recording(it, generation, t) }

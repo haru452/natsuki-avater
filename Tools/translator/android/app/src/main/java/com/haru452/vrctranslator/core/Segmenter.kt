@@ -12,7 +12,12 @@ data class SegmenterSettings(
     var minS: Float = 0.5f,
     var margin: Float = 3f,
     var floorMin: Float = 200f,
-)
+) {
+    companion object {
+        /** The PC's microphone (translator_pc.exe): Windows suppresses room noise to ~0, so quieter speech counts. */
+        fun forPcMic() = SegmenterSettings(floorMin = 60f)
+    }
+}
 
 /**
  * Feed 30 ms frames; get back one utterance (PCM) when the speaker stops.
