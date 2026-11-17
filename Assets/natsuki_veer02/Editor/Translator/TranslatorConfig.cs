@@ -39,6 +39,20 @@ public static class TranslatorConfig
 
     /// <summary>Height of the robot pet, from the ground to the top of its head.</summary>
     public const float RobotHeight = 0.40f;
+
+    // A humanoid model as the pet instead of the robot. Asset Store models cannot be redistributed, so the
+    // BOOTH build sets PetModelPath to "" (or leaves the model out) and gets the robot.
+    public const string PetModelPath = "";  // e.g. "Assets/Mryotaisu/Models/Muryotaisu.fbx"
+    /// <summary>The model's own prefab: its renderers carry the textured materials (the FBX's embedded ones are blank).</summary>
+    public const string PetMaterialSource = "Assets/Mryotaisu/Prefabs/Muryotaisu.prefab";
+    public const string PetIdleClip = "Assets/Mryotaisu/Animators/IdleA.anim";
+    public const string PetWalkClip = "Assets/Mryotaisu/Animators/Walk.anim";
+    public const string PetBoredClip = "Assets/Mryotaisu/Animators/IdleB.anim";
+    public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
+    public const string PetSmileShape = "Smile";
+    public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
+    /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>
+    public const float PetHeightRatio = 0.6f;
     /// <summary>Where the pet waits: in front and to the right of the wearer, on the ground (out from under their feet).</summary>
     public static readonly Vector3 PetOffset = new Vector3(0.8f, 0f, 0.8f);
 

@@ -18,7 +18,7 @@ public static class TranslatorSetup
     public static void BuildPrefab() => Guard(() =>
     {
         Preflight();
-        var prefab = TranslatorPrefabBuilder.Build(C.OutputDir);
+        var prefab = TranslatorPrefabBuilder.Build(C.OutputDir, petModel: TranslatorPetModel.Configured());
         EditorGUIUtility.PingObject(prefab);
         Debug.Log("[Translator] プレハブを作りました: " + PrefabPath);
     });
@@ -29,7 +29,7 @@ public static class TranslatorSetup
         Preflight();
         var avatar = ResolveAvatar(Selection.activeObject)
             ?? throw new InvalidOperationException("[Translator] 対象のアバターが決められませんでした。Hierarchy でアバターを選んでから、もう一度実行してください。");
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) ?? TranslatorPrefabBuilder.Build(C.OutputDir);
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) ?? TranslatorPrefabBuilder.Build(C.OutputDir, petModel: TranslatorPetModel.Configured());
         var placed = Place(avatar.gameObject, prefab);
         Selection.activeGameObject = placed;
         Debug.Log("[Translator] " + avatar.name + " に置きました。");
@@ -71,7 +71,11 @@ public static class TranslatorSetup
         var existing = avatarRoot.transform.Cast<Transform>()
             .Select(t => t.gameObject)
             .FirstOrDefault(g => PrefabUtility.GetCorrespondingObjectFromSource(g) == prefab);
-        if (existing != null) return existing;
+        if (existing != null)
+        {
+            TranslatorPetModel.FitTo(existing, descriptor);
+            return existing;
+        }
 
         RefuseExistingKat(avatarRoot, descriptor);
         int used = TranslatorBudget.UsedBits(descriptor.expressionParameters);
@@ -84,6 +88,7 @@ public static class TranslatorSetup
         var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, avatarRoot.transform);
         instance.transform.localPosition = Vector3.zero;
         instance.transform.localRotation = Quaternion.identity;
+        TranslatorPetModel.FitTo(instance, descriptor);
         Undo.RegisterCreatedObjectUndo(instance, "Add Translator Pet");
         if (avatarRoot.scene.IsValid()) EditorSceneManager.MarkSceneDirty(avatarRoot.scene);
         return instance;

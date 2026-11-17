@@ -79,8 +79,11 @@ public static class TranslatorReactionsBuilder
     }
 
     /// <summary>Any player's hand or finger on the head (including the wearer's own).</summary>
-    public static void AddPatZone(GameObject robot) =>
-        Receiver(robot.transform, PatZoneName, new Vector3(0, 0.3f, 0), C.PatRadius, C.PatTags, C.PatParam, allowOthers: true);
+    public static void AddPatZone(GameObject robot) => AddPatZone(robot.transform, new Vector3(0, 0.3f, 0));
+
+    /// <summary>The pat zone at pos under parent (a model's head bone, so it follows the head).</summary>
+    public static void AddPatZone(Transform parent, Vector3 pos) =>
+        Receiver(parent, PatZoneName, pos, C.PatRadius, C.PatTags, C.PatParam, allowOthers: true);
 
     static void Receiver(Transform parent, string name, Vector3 pos, float radius, string[] tags, string param, bool allowOthers)
     {

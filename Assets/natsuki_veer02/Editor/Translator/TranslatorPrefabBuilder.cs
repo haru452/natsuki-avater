@@ -22,7 +22,8 @@ public static class TranslatorPrefabBuilder
     public const string BackBoardName = "Back";
 
     /// <summary>Builds (or rebuilds in place, keeping the asset's GUID) the prefab and returns the asset.</summary>
-    public static GameObject Build(string outputDir, int katSyncCount = C.KatSyncCount)
+    /// <summary>petModel null: the robot. A humanoid model (TranslatorPetModel) replaces it otherwise.</summary>
+    public static GameObject Build(string outputDir, int katSyncCount = C.KatSyncCount, GameObject petModel = null)
     {
         Directory.CreateDirectory(outputDir);
         var root = new GameObject(C.RootName);
@@ -40,14 +41,18 @@ public static class TranslatorPrefabBuilder
             AddFollowConstraints(pet, follow, target.transform);
             AddCatchUpContact(target, follow);
             var hop = Child(follow.transform, C.PetHopName, Vector3.zero);
-            var robot = TranslatorRobotBuilder.Build(hop.transform, outputDir);
+            var robot = petModel == null
+                ? TranslatorRobotBuilder.Build(hop.transform, outputDir)
+                : TranslatorPetModel.Build(hop.transform, petModel);
+            float top = petModel == null ? C.RobotHeight : TranslatorPetModel.TopHeight(robot.transform);
             var gaze = TranslatorReactionsBuilder.AddGaze(root.transform);
             TranslatorReactionsBuilder.AddFacing(robot, gaze.transform);
-            TranslatorReactionsBuilder.AddPatZone(robot);
-            TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir);
-            TranslatorSleepBuilder.AddZzz(follow.transform, outputDir);
-            AddMerge(pet, TranslatorMotionBuilder.BuildMotionController(outputDir));
-            var text = Child(follow.transform, C.TextName, new Vector3(0, C.RobotHeight + C.TextHeightAboveRobot, 0));
+            if (petModel == null) TranslatorReactionsBuilder.AddPatZone(robot);
+            else TranslatorReactionsBuilder.AddPatZone(TranslatorPetModel.FindDeep(robot.transform, "Head"), new Vector3(0, 0.08f, 0));
+            TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);
+            if (petModel == null) TranslatorSleepBuilder.AddZzz(follow.transform, outputDir);
+            AddMerge(pet, TranslatorMotionBuilder.BuildMotionController(outputDir, petModel));
+            var text = Child(follow.transform, C.TextName, new Vector3(0, top + C.TextHeightAboveRobot, 0));
             BuildKatText(text.transform);
             AddMerge(text, TranslatorAnimationBuilder.BuildKatController(outputDir, katSyncCount));
 

@@ -25,7 +25,8 @@ public static class TranslatorMotionBuilder
     const float StopExitTime = 0.95f;
     const float Frame = 1f / 60f;
 
-    public static AnimatorController BuildMotionController(string outputDir)
+    /// <summary>petModel null: the robot (hop, sleep). A model: TranslatorPetModel's Body layer instead.</summary>
+    public static AnimatorController BuildMotionController(string outputDir, GameObject petModel = null)
     {
         var controller = TranslatorAnimationBuilder.NewController(outputDir + "/" + ControllerName);
         controller.AddParameter(C.VelocityParam, AnimatorControllerParameterType.Float);
@@ -33,16 +34,23 @@ public static class TranslatorMotionBuilder
         controller.AddParameter(C.PatParam, AnimatorControllerParameterType.Bool);
         controller.RemoveLayer(0);
 
-        BuildHopLayer(controller, outputDir);
+        if (petModel == null) BuildHopLayer(controller, outputDir);
+        else TranslatorPetModel.AddBodyLayer(controller, NewLayer(controller, TranslatorPetModel.BodyLayerName), petModel, outputDir);
         BuildTwoStateLayer(controller, LookLayerName, outputDir,
             "Away", WeightClip(typeof(VRCAimConstraint), RobotPath, "GlobalWeight", 0f, Frame),
             "Look", WeightClip(typeof(VRCAimConstraint), RobotPath, "GlobalWeight", 1f, Frame),
             C.LookedParam, C.LookTurnSeconds, holdSeconds: 0f);
-        BuildTwoStateLayer(controller, PatLayerName, outputDir,
-            "Calm", WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame),
-            "Hearts", WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds),
+        var calm = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame);
+        var hearts = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds);
+        if (petModel != null)
+        {
+            TranslatorPetModel.AddSmile(calm, 0f, Frame);
+            TranslatorPetModel.AddSmile(hearts, 100f, C.HeartsMinSeconds);
+        }
+        BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
-        TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
+        if (petModel == null)
+            TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
 
         EditorUtility.SetDirty(controller);
         return controller;
@@ -166,7 +174,7 @@ public static class TranslatorMotionBuilder
         return clip;
     }
 
-    static void SetHeadingWeight(AnimationClip clip, float weight, float seconds) =>
+    internal static void SetHeadingWeight(AnimationClip clip, float weight, float seconds) =>
         AnimationUtility.SetEditorCurve(clip,
             EditorCurveBinding.FloatCurve(C.PetHeadingName, typeof(VRCRotationConstraint), C.HeadingWeightProperty),
             AnimationCurve.Constant(0f, seconds, weight));
@@ -178,6 +186,6 @@ public static class TranslatorMotionBuilder
         AnimationUtility.SetAnimationClipSettings(clip, settings);
     }
 
-    static void Set(AnimationClip clip, string path, string property, AnimationCurve curve) =>
+    internal static void Set(AnimationClip clip, string path, string property, AnimationCurve curve) =>
         AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, typeof(Transform), property), curve);
 }
