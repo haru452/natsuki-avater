@@ -9,8 +9,35 @@ using TranslatorPc.Core;
 
 namespace TranslatorPc;
 
-/// <summary>Turns captured buffers into 20 ms packets and sends them where the gate says.</summary>
-class AudioSender
+/// <summary>Where captured audio goes.</summary>
+interface IAudioSink
+{
+    void Push(WaveFormat wf, byte[] buffer, int count);
+}
+
+/// <summary>Captured audio as 16 kHz 30 ms frames for the translator (the Segmenter's frame size).</summary>
+sealed class FrameSink : IAudioSink
+{
+    readonly Action<short[]> onFrame;
+    readonly Framer framer = new(Segmenter.FrameSamples);
+    AudioConverter? converter;
+    WaveFormat? format;
+
+    public FrameSink(Action<short[]> onFrame) => this.onFrame = onFrame;
+
+    public void Push(WaveFormat wf, byte[] buffer, int count)
+    {
+        if (format == null || !format.Equals(wf))
+        {
+            format = wf;
+            converter = AudioSender.ConverterFor(wf);
+        }
+        foreach (var frame in framer.Push(converter!.Convert(buffer, count))) onFrame(frame);
+    }
+}
+
+/// <summary>Turns captured buffers into 20 ms packets and sends them where the gate says (phone version).</summary>
+class AudioSender : IAudioSink
 {
     readonly StreamKind kind;
     readonly Func<StreamKind, IPEndPoint?> destination;
@@ -28,6 +55,11 @@ class AudioSender
         this.socket = socket;
     }
 
+    public static AudioConverter ConverterFor(WaveFormat wf) => new(wf.SampleRate, wf.Channels,
+        wf.Encoding == WaveFormatEncoding.IeeeFloat
+        || (wf is WaveFormatExtensible ext && ext.SubFormat == NAudio.Dmo.AudioMediaSubtypes.MEDIASUBTYPE_IEEE_FLOAT),
+        wf.BitsPerSample);
+
     /// <summary>Packets sent since the last call (the screen asks once a second).</summary>
     public int TakeCount() => Interlocked.Exchange(ref sentThisSecond, 0);
 
@@ -36,9 +68,7 @@ class AudioSender
         if (format == null || !format.Equals(wf))
         {
             format = wf;
-            converter = new AudioConverter(wf.SampleRate, wf.Channels, wf.Encoding == WaveFormatEncoding.IeeeFloat
-                || (wf is WaveFormatExtensible ext && ext.SubFormat == NAudio.Dmo.AudioMediaSubtypes.MEDIASUBTYPE_IEEE_FLOAT),
-                wf.BitsPerSample);
+            converter = ConverterFor(wf);
         }
         foreach (var frame in framer.Push(converter!.Convert(buffer, count)))
         {
@@ -58,11 +88,11 @@ class AudioSender
 /// <summary>One capture that is opened when wanted and closed when not. Call Update about once a second.</summary>
 abstract class CaptureSource : IDisposable
 {
-    protected readonly AudioSender sender;
+    protected readonly IAudioSink sender;
     IWaveIn? capture;
     public string State { get; protected set; } = "止まっています";
 
-    protected CaptureSource(AudioSender sender) => this.sender = sender;
+    protected CaptureSource(IAudioSink sender) => this.sender = sender;
 
     protected void Start(IWaveIn c, string state)
     {
@@ -93,7 +123,7 @@ abstract class CaptureSource : IDisposable
 /// <summary>Your Windows default microphone.</summary>
 class MicSource : CaptureSource
 {
-    public MicSource(AudioSender sender) : base(sender) { }
+    public MicSource(IAudioSink sender) : base(sender) { }
 
     public override void Update(bool wanted)
     {
@@ -157,7 +187,7 @@ class VrchatSource : CaptureSource
     });
     int? pid;
 
-    public VrchatSource(AudioSender sender) : base(sender) { }
+    public VrchatSource(IAudioSink sender) : base(sender) { }
 
     public override void Update(bool wanted)
     {

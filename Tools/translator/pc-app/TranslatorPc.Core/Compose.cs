@@ -15,6 +15,19 @@ public static class LangCodes
         "zh" => Lang.ZH,
         _ => Lang.OTHER,
     };
+
+    /// <summary>
+    /// The language a recognized text is written in (sherpa-onnx's .NET result has no language): Hangul → OTHER,
+    /// any kana → JA, kanji only → ZH, Latin letters → EN, nothing readable → NONE.
+    /// </summary>
+    public static Lang FromText(string text)
+    {
+        if (text.Any(c => c >= 0xAC00 && c <= 0xD7AF || c >= 0x1100 && c <= 0x11FF)) return Lang.OTHER;
+        if (text.Any(c => c >= 0x3040 && c <= 0x30FF)) return Lang.JA;
+        if (text.Any(c => c >= 0x4E00 && c <= 0x9FFF || c >= 0x3400 && c <= 0x4DBF)) return Lang.ZH;
+        if (text.Any(c => c is >= 'A' and <= 'Z' or >= 'a' and <= 'z')) return Lang.EN;
+        return Lang.NONE;
+    }
 }
 
 /// <summary>One translation. KanaOriginal / KanaTranslation are the Japanese side written in kana only (for KAT).</summary>

@@ -67,6 +67,16 @@ public class ComposeTests
         Assert.Equal(Lang.NONE, LangCodes.Parse(""));
     }
 
+    // sherpa-onnx's .NET result has no language, so it is read from the text's script.
+    [Theory]
+    [InlineData("おはようございます", Lang.JA)]
+    [InlineData("東京に行く", Lang.JA)]
+    [InlineData("Where are you from?", Lang.EN)]
+    [InlineData("好嘞。", Lang.ZH)]
+    [InlineData("也希요。", Lang.OTHER)]
+    [InlineData("。", Lang.NONE)]
+    public void LanguageFromTheText(string text, Lang expected) => Assert.Equal(expected, LangCodes.FromText(text));
+
     [Fact]
     public void ShortTextIsOnePage() => Assert.Equal(new[] { "hello" }, Compose.Paginate("hello"));
 

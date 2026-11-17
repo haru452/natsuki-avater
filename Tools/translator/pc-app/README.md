@@ -1,31 +1,35 @@
 # VRC Translator PC（translator_pc.exe）
 
-スマホの翻訳アプリと VRChat をつなぐ、PC 側のプログラムです。
+PC だけで翻訳します（スマホは要りません）。
 
-- VRChat ⇔ スマホの OSC を中継します（VRChat 9000/9001、スマホから 9002、スマホへ 9001）
-- アバターの「翻訳」がオンのあいだだけ、PC のマイクの音をスマホへ送ります（UDP 9003）
-- スマホで「相手の声」をオンにしたとき、VRChat の音だけ（YouTube や Discord は入りません）をスマホへ送ります
+PC のマイク → 音声認識（SenseVoice、PC の中）→ DeepL → ペットの上の字幕（KAT）/ チャットボックス
+
+- アバターの「翻訳」がオンのあいだだけマイクを開きます
+- 自分は日本語か英語で話す前提です。日本語は英語（または中国語）に、英語は日本語に訳します
+- 中国語の訳はチャットボックスに出ます（ペットの上の字幕は漢字を出せないため）
 
 ## 使い方
 
-1. デスクトップの「VRC Translator PC」をダブルクリック
-2. 画面に出る「この PC の IP」をスマホのアプリに入れる（初回だけ）
-3. スマホのアプリで「自分の声のマイク: PC」にして開始
-4. VRChat でアバターの「翻訳」をオン
+1. DeepL API Free に登録して「認証キー」をコピーする（https://www.deepl.com/pro-api）
+2. デスクトップの「VRC Translator PC」をダブルクリック
+3. 初回だけ: **K** を押してキーを貼り付け、Enter（キーは `%APPDATA%\VRCTranslatorPC\settings.json` に保存。画面には出ません）
+4. VRChat でアバターの「翻訳」をオンにして話す
 
-終わるときは Ctrl+C か、ウィンドウを閉じます。自動では起動しません。
+キー: **K** = DeepL のキー、**L** = 相手の言語（英語 / 中国語）、**Ctrl+C** = 終わる。
 
-初回に Windows のファイアウォールの確認が出たら「プライベート ネットワーク」を許可してください。
+画面の「最近のできごと」に 1 文ごとの時間（認識 / DeepL）、上に CPU 使用率が出ます。
+記録: `%APPDATA%\VRCTranslatorPC\translation_log.tsv`（音声とキーは残しません）。
 
 ## 作り方（開発者向け）
 
-```
-powershell -ExecutionPolicy Bypass -File publish.ps1
-```
+1. 音声認識のモデルを置く: `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17` の `model.int8.onnx` と `tokens.txt` を
+   `models\sense-voice\` に（git には入れません）
+2. `powershell -ExecutionPolicy Bypass -File publish.ps1` → `publish\translator_pc.exe` と `publish\models\`、デスクトップのショートカット
+3. 確かめる: `publish\translator_pc.exe --test-wav <16 kHz mono の wav>`（認識・かな・DeepL の結果を表示）
 
-`publish/translator_pc.exe`（.NET を入れなくても動く 1 ファイル）ができ、デスクトップにショートカットを作ります。
 テストは `dotnet test`。
 
-`Tools/translator/pc/`（Python の中継）は古い版です。ポートがぶつかるので同時に動かさないでください。
+使っているもの: .NET 8（MIT）、NAudio 2.2.1（MIT）、sherpa-onnx（Apache 2.0）、SenseVoice モデル（モデルの LICENSE を参照）、
+LibNMeCab（GPL/LGPL/BSD のうち BSD）と IPA 辞書。
 
-使っているもの: .NET 8（MIT）、NAudio 2.2.1（MIT）。
+`Tools/translator/android/`（スマホ版）と `Tools/translator/pc/`（Python の中継）は古い版です。

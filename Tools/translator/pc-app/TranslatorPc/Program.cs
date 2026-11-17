@@ -1,8 +1,8 @@
-﻿// translator_pc.exe: the PC side of VRC Translator.
-// - Relays OSC between VRChat (9000/9001) and the phone app (9002 in, 9001 out).
-// - Sends your PC microphone (while 翻訳 is on) and VRChat's sound (when the phone asks) to the phone on 9003.
+﻿// translator_pc.exe: VRC Translator on the PC alone.
+// PC microphone (only while the avatar's 翻訳 toggle is on) → SenseVoice → DeepL → the pet's KAT text / chatbox.
+// VRChat → us on 9001 (the toggle), us → VRChat on 9000.
+using System.Diagnostics;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using TranslatorPc.Core;
@@ -11,148 +11,229 @@ namespace TranslatorPc;
 
 static class Program
 {
-    const int FromVrchatPort = 9001, FromPhonePort = 9002;
+    const int FromVrchatPort = 9001;
     static readonly IPEndPoint Vrchat = new(IPAddress.Loopback, 9000);
+    static readonly string DataDir = Path.GetDirectoryName(Settings.DefaultPath)!;
 
-    static int Main()
+    static int Main(string[] args)
     {
         Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
         Console.Title = "VRC Translator PC";
+        var settings = Settings.Load(Settings.DefaultPath);
+        var screen = new Screen();
 
-        UdpClient fromPhone, fromVrchat;
+        // Next to the exe (AppContext.BaseDirectory is the single-file extraction folder).
+        string exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+        string modelDir = Path.Combine(exeDir, "models", "sense-voice");
+        if (!File.Exists(Path.Combine(modelDir, "model.int8.onnx")))
+            return Fail($"音声認識のモデルがありません: {modelDir}\nREADME の手順でモデルを置いてください。");
+
+        Console.WriteLine("音声認識と辞書を読み込んでいます…");
+        using var auto = new SenseVoice(modelDir);
+        using var japanese = new SenseVoice(modelDir, language: "ja");
+        using var kana = new MeCabKana();
+        kana.ToKana("準備"); // load the dictionary now, not on the first sentence
+        var stt = new JaEnRecognizer(auto, japanese);
+        var deepl = new DeepLClient(() => settings.DeepLKey);
+
+        if (args.Length == 2 && args[0] == "--test-wav") return TestWav(args[1], stt, deepl, kana, settings);
+
+        UdpClient fromVrchat;
         try
         {
-            fromPhone = Bind(FromPhonePort);
-            fromVrchat = Bind(FromVrchatPort);
+            fromVrchat = new UdpClient(new IPEndPoint(IPAddress.Any, FromVrchatPort));
         }
         catch (SocketException e)
         {
-            Console.WriteLine($"ポート {FromPhonePort} か {FromVrchatPort} が使われています（{e.Message}）。");
-            Console.WriteLine("このプログラムがもう開いていないか、古い中継（pc_osc_relay.py）が動いていないか確かめてください。");
-            Console.WriteLine("Enter で終わります。");
-            Console.ReadLine();
-            return 1;
+            return Fail($"ポート {FromVrchatPort} が使われています（{e.Message}）。\nこのプログラムがもう開いていないか、古い中継が動いていないか確かめてください。");
         }
+        using var toVrchat = new UdpClient();
+        void Send(byte[] p) { try { toVrchat.Send(p, p.Length, Vrchat); } catch (SocketException) { } }
 
-        var relay = new Relay(Vrchat);
-        var gate = new AudioGate(relay);
-        var gateLock = new object();
-        IPEndPoint? Destination(StreamKind k) { lock (gateLock) return gate.Destination(k, DateTime.UtcNow); }
+        var clock = Stopwatch.StartNew();
+        double Now() => clock.Elapsed.TotalSeconds;
+        var display = new KatDisplay(Send, settings.Display, settings.KatSync, settings.ShowOriginal, Now, onEvent: screen.Say);
+        var log = new TranslationLog(Path.Combine(DataDir, "translation_log.tsv"));
+        var pipeline = new OwnVoice(settings, stt, deepl, display, kana, log.Append, Now, screen.Say);
 
         var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
-
-        // The phone socket also sends everything (to VRChat and to the phone).
-        void SendAll(List<(byte[] Packet, IPEndPoint To)> outgoing)
-        {
-            foreach (var (packet, to) in outgoing)
-                try { fromPhone.Send(packet, packet.Length, to); } catch (SocketException) { }
-        }
-        StartReceiver(fromPhone, stop.Token, (data, from) =>
-        {
-            List<(byte[], IPEndPoint)> o;
-            lock (gateLock) o = relay.FromPhone(data, from, DateTime.UtcNow);
-            SendAll(o);
-        });
-        StartReceiver(fromVrchat, stop.Token, (data, from) =>
-        {
-            // Our own forward (sent from FromPhonePort) landing back here: never relay it again, or it loops.
-            if (from.Port == FromPhonePort && IPAddress.IsLoopback(from.Address)) return;
-            List<(byte[], IPEndPoint)> o;
-            lock (gateLock) o = relay.FromVrchat(data);
-            SendAll(o);
-        });
-
-        using var audioSocket = new UdpClient();
-        var micSender = new AudioSender(StreamKind.OwnMic, Destination, audioSocket);
-        var vrcSender = new AudioSender(StreamKind.Vrchat, Destination, audioSocket);
-        using var mic = new MicSource(micSender);
-        using var vrchat = new VrchatSource(vrcSender);
-
-        var screen = new StatusScreen();
-        while (!stop.IsCancellationRequested)
-        {
-            Phone? phone;
-            bool alive, active;
-            lock (gateLock) { phone = relay.Phone; alive = relay.PhoneAlive(DateTime.UtcNow); active = relay.TranslatorActive; }
-            mic.Update(Destination(StreamKind.OwnMic) != null);
-            vrchat.Update(Destination(StreamKind.Vrchat) != null);
-            screen.Show(new[]
-            {
-                "VRC Translator PC（Ctrl+C で終わります）",
-                "",
-                "この PC の IP:   " + string.Join(", ", LocalAddresses()) + "（スマホのアプリに入れます）",
-                "スマホ:          " + (phone == null ? "スマホを待っています" : alive ? $"見つかった（{phone.Address}）" : $"返事がありません（{phone.Address}）"),
-                "翻訳:            " + (active ? "オン" : "オフ（アバターの「翻訳」で切り替え）"),
-                "自分のマイク:    " + mic.State + $"  {micSender.TakeCount()} 個/秒",
-                "VRChat の音:     " + vrchat.State + $"  {vrcSender.TakeCount()} 個/秒",
-                phone != null && !phone.PcMic ? "（スマホのアプリは「マイク: スマホ」になっています）" : "",
-            });
-            stop.Token.WaitHandle.WaitOne(1000);
-        }
-        fromPhone.Close();
-        fromVrchat.Close();
-        return 0;
-    }
-
-    static UdpClient Bind(int port)
-    {
-        var c = new UdpClient(AddressFamily.InterNetwork);
-        c.Client.Bind(new IPEndPoint(IPAddress.Any, port));
-        // Windows reports "port unreachable" from an earlier send as an error on the next receive; ignore it.
-        const int SIO_UDP_CONNRESET = -1744830452;
-        c.Client.IOControl(SIO_UDP_CONNRESET, new byte[] { 0 }, null);
-        return c;
-    }
-
-    static void StartReceiver(UdpClient socket, CancellationToken stop, Action<byte[], IPEndPoint> onPacket)
-    {
-        new Thread(() =>
+        Background("vrchat-osc", () =>
         {
             while (!stop.IsCancellationRequested)
             {
                 try
                 {
                     var from = new IPEndPoint(IPAddress.Any, 0);
-                    var data = socket.Receive(ref from);
-                    onPacket(data, from);
+                    var (address, oscArgs) = Osc.Parse(fromVrchat.Receive(ref from));
+                    pipeline.OnOsc(address, oscArgs);
                 }
+                catch (FormatException) { }
                 catch (SocketException) { if (stop.IsCancellationRequested) return; }
                 catch (ObjectDisposedException) { return; }
             }
-        }) { IsBackground = true }.Start();
+        });
+        Background("translate", () => { while (!stop.IsCancellationRequested) pipeline.ProcessNext(300); });
+
+        using var mic = new MicSource(new FrameSink(pipeline.FeedFrame));
+        var cpu = new CpuMeter();
+        double nextScreen = 0;
+        while (!stop.IsCancellationRequested)
+        {
+            lock (pipeline.DisplayLock) display.Tick();
+            if (Now() >= nextScreen)
+            {
+                nextScreen = Now() + 1;
+                mic.Update(pipeline.Active); // the microphone is open only while 翻訳 is on
+                screen.Show(new[]
+                {
+                    "VRC Translator PC（K: DeepL のキー / L: 相手の言語 / Ctrl+C: 終わる）",
+                    "",
+                    "翻訳:        " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「翻訳」で切り替え）"),
+                    "マイク:      " + mic.State,
+                    "DeepL キー:  " + Settings.MaskKey(settings.DeepLKey),
+                    "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),
+                    $"CPU:         {cpu.Percent():0.0} %",
+                });
+                HandleKeys(settings, screen);
+            }
+            stop.Token.WaitHandle.WaitOne(50);
+        }
+        fromVrchat.Close();
+        return 0;
     }
 
-    /// <summary>This PC's LAN addresses (the ones with a gateway, so not VPN or virtual adapters).</summary>
-    static IEnumerable<string> LocalAddresses()
+    static void HandleKeys(Settings settings, Screen screen)
     {
-        var found = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .Select(n => n.GetIPProperties())
-            .Where(p => p.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork))
-            .SelectMany(p => p.UnicastAddresses)
-            .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork)
-            .Select(a => a.Address.ToString())
-            .ToList();
-        return found.Count > 0 ? found : new List<string> { "（見つかりません）" };
+        while (!Console.IsInputRedirected && Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(intercept: true).Key;
+            if (key == ConsoleKey.L)
+            {
+                settings.TargetLang = settings.TargetLang == Lang.ZH ? Lang.EN : Lang.ZH;
+                settings.Save(Settings.DefaultPath);
+            }
+            else if (key == ConsoleKey.K)
+            {
+                screen.Pause();
+                Console.WriteLine("DeepL の API キーを貼り付けて Enter（空のまま Enter でやめる）:");
+                var entered = Console.ReadLine()?.Trim() ?? "";
+                if (entered.Length > 0)
+                {
+                    settings.DeepLKey = entered;
+                    settings.Save(Settings.DefaultPath);
+                }
+                screen.Resume();
+            }
+        }
+    }
+
+    /// <summary>Recognize and translate one WAV file (16 kHz mono 16-bit) and print the result: a check without VRChat.</summary>
+    static int TestWav(string path, IRecognizer stt, ITranslator deepl, IKana kana, Settings settings)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var pcm = new short[(bytes.Length - 44) / 2];
+        Buffer.BlockCopy(bytes, 44, pcm, 0, pcm.Length * 2);
+        var sw = Stopwatch.StartNew();
+        var heard = stt.Recognize(pcm);
+        Console.WriteLine($"認識 {sw.Elapsed.TotalSeconds:0.00} 秒: [{heard.Lang}] {heard.Text}");
+        if (heard.Lang == Lang.JA) Console.WriteLine("かな: " + kana.ToKana(heard.Text));
+        try
+        {
+            sw.Restart();
+            var target = heard.Lang == Lang.JA ? settings.TargetLang : Lang.JA;
+            Console.WriteLine($"DeepL {sw.Elapsed.TotalSeconds:0.00} 秒: " + deepl.Translate(heard.Text, heard.Lang, target));
+        }
+        catch (Exception e) when (e is DeepLException or HttpRequestException or TaskCanceledException)
+        {
+            Console.WriteLine("DeepL: " + e.Message);
+        }
+        return 0;
+    }
+
+    static void Background(string name, Action body) => new Thread(() => body()) { IsBackground = true, Name = name }.Start();
+
+    static int Fail(string message)
+    {
+        Console.WriteLine(message);
+        Console.WriteLine("Enter で終わります。");
+        if (!Console.IsInputRedirected) Console.ReadLine();
+        return 1;
     }
 }
 
-/// <summary>Redraws the same lines in place once a second (or just prints when the output is redirected).</summary>
-class StatusScreen
+/// <summary>This process's CPU use since the last call, as a share of the whole machine.</summary>
+sealed class CpuMeter
 {
-    int top = -1;
+    readonly Process self = Process.GetCurrentProcess();
+    TimeSpan lastCpu;
+    DateTime lastWall = DateTime.UtcNow;
+
+    public double Percent()
+    {
+        self.Refresh();
+        var cpu = self.TotalProcessorTime;
+        var wall = DateTime.UtcNow;
+        double used = (cpu - lastCpu).TotalSeconds / Math.Max(0.001, (wall - lastWall).TotalSeconds) / Environment.ProcessorCount * 100;
+        lastCpu = cpu;
+        lastWall = wall;
+        return used;
+    }
+}
+
+/// <summary>One line per translation, tab-separated. Never holds audio or keys.</summary>
+sealed class TranslationLog
+{
+    readonly string path;
+    readonly object gate = new();
+
+    public TranslationLog(string path) => this.path = path;
+
+    public void Append(Lang source, string original, string translation)
+    {
+        static string Clean(string s) => string.Join(" ", s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        lock (gate)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.AppendAllText(path, string.Join("\t", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), "self",
+                source.ToString().ToLowerInvariant(), Clean(original), Clean(translation), "deepl") + "\n", Encoding.UTF8);
+        }
+    }
+}
+
+/// <summary>The status lines redrawn in place, plus the latest messages under them.</summary>
+sealed class Screen
+{
+    readonly List<string> messages = new();
+    readonly object gate = new();
+    bool paused;
+    bool cleared;
+
+    public void Say(string message)
+    {
+        lock (gate)
+        {
+            messages.Add(DateTime.Now.ToString("HH:mm:ss ") + message);
+            if (messages.Count > 10) messages.RemoveAt(0);
+        }
+        if (Console.IsOutputRedirected) Console.WriteLine(message);
+    }
+
+    public void Pause() { lock (gate) { paused = true; Console.Clear(); } }
+
+    public void Resume() { lock (gate) { paused = false; cleared = false; } }
 
     public void Show(string[] lines)
     {
-        if (Console.IsOutputRedirected)
+        lock (gate)
         {
-            Console.WriteLine(string.Join(" | ", lines.Where(l => l.Length > 0)));
-            return;
+            if (paused || Console.IsOutputRedirected) return;
+            if (!cleared) { Console.Clear(); cleared = true; }
+            Console.SetCursorPosition(0, 0);
+            int width = Math.Max(20, Console.WindowWidth - 1);
+            foreach (var l in lines.Concat(new[] { "", "― 最近のできごと ―" }).Concat(messages))
+                Console.WriteLine(l.Length > width ? l[..width] : l.PadRight(width));
         }
-        if (top < 0) { Console.Clear(); top = 0; }
-        Console.SetCursorPosition(0, top);
-        int width = Math.Max(20, Console.WindowWidth - 1);
-        foreach (var l in lines) Console.WriteLine(l.Length > width ? l[..width] : l.PadRight(width));
     }
 }
