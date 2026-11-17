@@ -84,7 +84,7 @@ public class TranslatorPetModelTests
     [Test]
     public void Motion_BodyLookPatBlink_NoHopNoSleep()
     {
-        CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName },
+        CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName, P.SideLayerName },
             c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VoiceParam).type);
@@ -222,14 +222,14 @@ public class TranslatorPetModelTests
         Assert.IsNull(Find("Pet_Root/Pet_Trail"), "walks to its spot, not along the wearer's path");
         var follow = Find("Pet_Root/Pet_Follow").GetComponent<VRCParentConstraint>();
         Assert.AreEqual(3, follow.Sources.Count);
-        Assert.AreEqual(Find("Pet_Root/Pet_Heading/Pet_Target"), follow.Sources[2].SourceTransform, "extra pull while landing");
+        Assert.AreEqual(Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target"), follow.Sources[2].SourceTransform, "extra pull while landing");
         Assert.AreEqual(0f, follow.Sources[2].Weight);
         var ahead = Find("Pet_Root/Pet_Heading/" + TranslatorPetWalker.AheadName);
-        Assert.Greater(ahead.localPosition.z, C.PetOffset.z + 5f, "far in front of the spot, along the wearer's heading");
-        Assert.AreEqual(C.PetOffset.x, ahead.localPosition.x);
+        Assert.Greater(ahead.localPosition.z, C.PetOffset.z + 5f, "far in front, along the wearer's heading");
+        Assert.AreEqual(0f, ahead.localPosition.x, "straight ahead: the same whichever side she waits on");
         var aim = Find("Pet_Root/Pet_Follow/Pet_Hop").GetComponent<VRCAimConstraint>();
         Assert.IsNotNull(aim);
-        CollectionAssert.AreEqual(new[] { Find("Pet_Root/Pet_Heading/Pet_Target"), ahead },
+        CollectionAssert.AreEqual(new[] { Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target"), ahead },
             Enumerable.Range(0, aim.Sources.Count).Select(i => aim.Sources[i].SourceTransform));
         Assert.IsFalse(aim.AffectsRotationX);
         Assert.IsFalse(aim.AffectsRotationZ);
@@ -238,9 +238,9 @@ public class TranslatorPetModelTests
     [Test]
     public void Prefab_WaitsWhereTheRobotDoes_AndKnowsWhenItArrived()
     {
-        Assert.AreEqual(C.PetOffset, Find("Pet_Root/Pet_Heading/Pet_Target").localPosition);
+        Assert.AreEqual(C.PetOffset, Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target").localPosition);
         Assert.AreEqual(C.PetOffset, Find("Pet_Root/Pet_Follow").localPosition);
-        var arrive = Find("Pet_Root/Pet_Heading/Pet_Target").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.ArrivedParam);
+        var arrive = Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.ArrivedParam);
         Assert.AreEqual(C.ArriveRadius, arrive.radius);
         CollectionAssert.AreEqual(new[] { C.PetContactTag }, arrive.collisionTags);
         Assert.IsFalse(arrive.allowOthers);
@@ -335,6 +335,43 @@ public class TranslatorPetModelTests
         Assert.AreEqual(C.HeadLookWeight, Weight("Look"));
         Assert.AreEqual(0f, Weight("Away"));
         Assert.Less(C.HeadLookWeight, 1f, "part of the way, so the neck never bends too far");
+    }
+
+    // ---- Left or right, whichever is nearer ----
+
+    [Test]
+    public void Prefab_KnowsWhichSideOfTheWearerSheIsOn()
+    {
+        foreach (var (param, sign) in new[] { (C.PetLeftParam, -1f), (C.PetRightParam, 1f) })
+        {
+            var r = prefab.GetComponentsInChildren<VRCContactReceiver>(true).Single(c => c.parameter == param);
+            Assert.AreEqual(prefab.transform, r.transform.parent, param + ": moves and turns with the wearer");
+            Assert.AreEqual(sign, Mathf.Sign(r.transform.localPosition.x), param);
+            Assert.Greater(Mathf.Abs(r.transform.localPosition.x) - r.radius, 0.05f, "a gap in the middle, so she does not flip-flop behind the wearer");
+            CollectionAssert.AreEqual(new[] { C.PetContactTag }, r.collisionTags);
+            Assert.IsFalse(r.allowOthers);
+            Assert.AreEqual(ContactBase.ShapeType.Capsule, r.shapeType);
+            Assert.Greater(Mathf.Abs(Vector3.Dot(r.transform.up, prefab.transform.forward)), 0.99f, "lies front to back: covers her behind the wearer too");
+            Assert.GreaterOrEqual(r.height, 8f);
+        }
+    }
+
+    [Test]
+    public void Side_SpotIsMirroredOnTheLeft_SwitchedOnlyWhenSettingOff()
+    {
+        Assert.AreEqual("Pet_Side", Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target").parent.name);
+        float Scale(string state) => AnimationUtility.GetEditorCurve(Clip(State(P.SideLayerName, state)),
+            EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform), "m_LocalScale.x")).Evaluate(0f);
+        Assert.AreEqual(1f, Scale("Right"));
+        Assert.AreEqual(-1f, Scale("Left"));
+        Assert.AreEqual("Right", Layer(P.SideLayerName).defaultState.name);
+        Assert.AreEqual($"Left:{C.PetLeftParam}If0&{C.CloseParam}IfNot0", Transitions(State(P.SideLayerName, "Right")));
+        Assert.AreEqual($"Right:{C.PetRightParam}If0&{C.CloseParam}IfNot0", Transitions(State(P.SideLayerName, "Left")));
+        foreach (var state in new[] { "Right", "Left" })
+            foreach (var axis in new[] { "y", "z" })
+                Assert.AreEqual(1f, AnimationUtility.GetEditorCurve(Clip(State(P.SideLayerName, state)),
+                    EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform), "m_LocalScale." + axis)).Evaluate(0f),
+                    "every axis written (a missing one becomes 0)");
     }
 
     [Test]

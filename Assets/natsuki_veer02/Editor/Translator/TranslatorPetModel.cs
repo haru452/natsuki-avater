@@ -188,6 +188,8 @@ public static class TranslatorPetModel
     /// (rotations; the hips also their position) at 30 fps, plus the clip's blend-shape curves except Smile.
     /// Paths are prefixed with robotPath.
     /// </summary>
+    public const string SideLayerName = "Translator_Side";
+
     public static AnimationClip Bake(AnimationClip source, GameObject model, string robotPath)
     {
         var temp = (GameObject)Object.Instantiate(model);

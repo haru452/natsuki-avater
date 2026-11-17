@@ -39,13 +39,15 @@ public class TranslatorWalkerPlayTests
         motion.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<AnimatorController>(Dir + "Translator_Motion.controller");
         var follow = root.Find("Pet_Follow");
         var hop = follow.Find("Pet_Hop");
-        var target = root.Find("Pet_Heading/Pet_Target");
+        var target = root.Find("Pet_Heading/Pet_Side/Pet_Target");
 
         // The contacts, worked out from the distances as VRChat does: "arrived" (near its spot), "near" (far off =
         // a teleport, and the pet is snapped over) and "close" (the wearer is near the pet).
         float Radius(Transform on, string param) => on.GetComponents<ContactReceiver>().Single(r => r.parameter == param).radius;
         float nearRadius = Radius(target, "TranslatorPetNear"), arriveRadius = Radius(target, "TranslatorPetArrived");
         float closeRadius = Radius(follow, "TranslatorPetClose");
+        var sides = pet.GetComponentsInChildren<ContactReceiver>(true)
+            .Where(r => r.parameter == "TranslatorPetLeft" || r.parameter == "TranslatorPetRight").ToList();
         bool landed = false;
         void Arrived()
         {
@@ -53,6 +55,7 @@ public class TranslatorWalkerPlayTests
             motion.SetBool("TranslatorPetArrived", d < arriveRadius);
             toggle.SetBool("TranslatorPetNear", d < nearRadius);
             motion.SetBool("TranslatorPetClose", Vector3.Distance(follow.position, avatar.transform.position) < closeRadius);
+            foreach (var r in sides) motion.SetBool(r.parameter, InCapsule(follow.position, r));
             landed |= motion.GetCurrentAnimatorStateInfo(0).IsName("Land");
         }
         yield return null;
@@ -171,6 +174,34 @@ public class TranslatorWalkerPlayTests
         Debug.Log($"[WalkDiag] crouch: head looks {faceDir}, face is {toFace}");
         Assert.Less(faceDir.y, -0.2f, "looks down at the crouching wearer");
         Assert.Greater(Vector3.Dot(faceDir, toFace), 0.85f, "toward their face (most of the way)");
+        motion.SetBool("TranslatorPetLooked", false);
+
+        // The wearer turns round on the spot (she stays: now behind them, on their left), then walks off: she goes to
+        // the front LEFT (nearer), not round to the right.
+        avatar.transform.rotation *= Quaternion.Euler(0, 180, 0);
+        for (int i = 0; i < 30; i++) { Arrived(); yield return null; }
+        for (float walked = 0; walked < 3f; walked += 1.5f * Time.deltaTime)
+        {
+            avatar.transform.position += avatar.transform.forward * 1.5f * Time.deltaTime;
+            motion.SetFloat("VelocityMagnitude", 1.5f);
+            Arrived();
+            yield return null;
+        }
+        motion.SetFloat("VelocityMagnitude", 0f);
+        for (int i = 0; i < 600; i++) { Arrived(); yield return null; }
+        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(-0.55f, 0, 0.55f)), 0.35f, "waits at the front left");
+    }
+
+    /// <summary>Inside a capsule contact (it runs along its local Y), as VRChat works it out.</summary>
+    static bool InCapsule(Vector3 p, ContactReceiver r)
+    {
+        var t = r.transform;
+        float half = Mathf.Max(0, r.height / 2 - r.radius);
+        var a = t.position - t.up * half;
+        var b = t.position + t.up * half;
+        var ab = b - a;
+        float k = Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude);
+        return Vector3.Distance(p, a + ab * k) < r.radius;
     }
 }
 #endif

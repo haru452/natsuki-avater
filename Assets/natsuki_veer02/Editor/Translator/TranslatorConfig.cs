@@ -67,6 +67,19 @@ public static class TranslatorConfig
     /// <summary>A point this far ahead of the spot: waiting, the model faces the way the wearer faced.</summary>
     public const float AheadDistance = 10f;
 
+    // Left or right: the humanoid waits on whichever side of the wearer she is on when she sets off.
+    /// <summary>Between Pet_Heading and Pet_Target; its x scale (+1 / -1) puts the spot on the right or the left.</summary>
+    public const string PetSideName = "Pet_Side";
+    public const string PetLeftParam = "TranslatorPetLeft";
+    public const string PetRightParam = "TranslatorPetRight";
+    /// <summary>
+    /// Each side's sensing capsule, lying front to back (SideSenseLength long, so it also covers her when she is
+    /// behind the wearer): this radius, its edge SideSenseGap from the wearer's middle (no flip-flop behind them).
+    /// </summary>
+    public const float SideSenseRadius = 3f;
+    public const float SideSenseLength = 10f;
+    public const float SideSenseGap = 0.2f;
+
     // Name tag over the humanoid pet's head, like VRChat's own: icon, name, a pronoun pill and a status line.
     /// <summary>Whose face the icon shows: the pet herself (Natsuki).</summary>
     public const string NameTagAvatarPrefab = PetMaterialSource;

@@ -36,7 +36,8 @@ public static class TranslatorPrefabBuilder
             var pet = Child(root.transform, C.PetRootName, Vector3.zero);
             var heading = Child(pet.transform, C.PetHeadingName, Vector3.zero);
             TranslatorReactionsBuilder.AddHeading(heading, root.transform);
-            var target = Child(heading.transform, C.PetTargetName, C.PetOffset);
+            var side = Child(heading.transform, C.PetSideName, Vector3.zero);
+            var target = Child(side.transform, C.PetTargetName, C.PetOffset);
             var follow = Child(pet.transform, C.PetFollowName, C.PetOffset);
             AddFollowConstraints(pet, follow, target.transform);
             AddCatchUpContact(target, follow);
@@ -54,6 +55,7 @@ public static class TranslatorPrefabBuilder
                 TranslatorPetWalker.AddLandingPull(follow, target.transform);
                 TranslatorPetWalker.AddFacing(hop, target.transform, TranslatorPetWalker.AddAhead(heading.transform));
                 TranslatorPetWalker.AddClose(follow, root);
+                TranslatorPetWalker.AddSideSense(root);
                 TranslatorPetWalker.AddArrive(target);
                 var look = robot.transform.Find(TranslatorReactionsBuilder.LookZoneName);
                 if (look != null) look.localPosition = new Vector3(0, top * 0.6f, 0);

@@ -24,7 +24,7 @@ public static class TranslatorPetWalker
     {
         var ahead = new GameObject(AheadName).transform;
         ahead.SetParent(heading, false);
-        ahead.localPosition = new Vector3(C.PetOffset.x, 0f, C.PetOffset.z + C.AheadDistance);
+        ahead.localPosition = new Vector3(0f, 0f, C.PetOffset.z + C.AheadDistance);
         return ahead;
     }
 
@@ -59,6 +59,64 @@ public static class TranslatorPetWalker
         s.shapeType = ContactBase.ShapeType.Sphere;
         s.radius = 0.05f;
         s.collisionTags = new List<string> { C.WearerContactTag };
+    }
+
+    /// <summary>
+    /// Which side of the wearer she is on: a long capsule on each side, lying front to back, on the avatar (so it
+    /// turns with the wearer),
+    /// with a gap down the middle. Her own sender (PetContactTag) sets TranslatorPetLeft / TranslatorPetRight.
+    /// </summary>
+    public static void AddSideSense(GameObject wearer)
+    {
+        foreach (var (param, sign) in new[] { (C.PetLeftParam, -1f), (C.PetRightParam, 1f) })
+        {
+            var go = new GameObject(param == C.PetLeftParam ? "Pet_SenseLeft" : "Pet_SenseRight");
+            go.transform.SetParent(wearer.transform, false);
+            go.transform.localPosition = new Vector3(sign * (C.SideSenseRadius + C.SideSenseGap), 0f, 0f);
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // capsules run along local Y: lay it front to back
+            var r = go.AddComponent<VRCContactReceiver>();
+            r.shapeType = ContactBase.ShapeType.Capsule;
+            r.radius = C.SideSenseRadius;
+            r.height = C.SideSenseLength;
+            r.collisionTags = new List<string> { C.PetContactTag };
+            r.allowSelf = true;
+            r.allowOthers = false;
+            r.localOnly = false;
+            r.receiverType = ContactReceiver.ReceiverType.Constant;
+            r.parameter = param;
+        }
+    }
+
+    /// <summary>
+    /// Right (Pet_Side scale x +1) or Left (-1): the spot on the side she is on. Switched only when she sets off
+    /// (the wearer is no longer close), never while she waits.
+    /// </summary>
+    public static void AddSideLayer(AnimatorController controller, AnimatorStateMachine sm, string outputDir)
+    {
+        controller.AddParameter(C.PetLeftParam, AnimatorControllerParameterType.Bool);
+        controller.AddParameter(C.PetRightParam, AnimatorControllerParameterType.Bool);
+        AnimatorState Side(string name, float x, float y)
+        {
+            var clip = new AnimationClip();
+            foreach (var (axis, v) in new[] { ("x", x), ("y", 1f), ("z", 1f) })
+                AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform),
+                    "m_LocalScale." + axis), AnimationCurve.Constant(0f, 1f / 60f, v));
+            var s = sm.AddState(name, new Vector3(300, y));
+            s.motion = TranslatorAnimationBuilder.SaveClip(clip, outputDir + "/Translator_PetSide" + name + ".anim");
+            s.writeDefaultValues = false;
+            return s;
+        }
+        var right = Side("Right", 1f, 100);
+        var left = Side("Left", -1f, 200);
+        sm.defaultState = right;
+        foreach (var (from, to, param) in new[] { (right, left, C.PetLeftParam), (left, right, C.PetRightParam) })
+        {
+            var t = from.AddTransition(to);
+            t.hasExitTime = false;
+            t.duration = 0f;
+            t.AddCondition(AnimatorConditionMode.If, 0f, param);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
+        }
     }
 
     /// <summary>Turns Pet_Hop (and so the pet) toward the waiting spot or the point ahead — whichever the Body layer weights.</summary>

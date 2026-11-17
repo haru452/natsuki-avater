@@ -90,7 +90,7 @@ public class TranslatorFollowPlayTests
         avatar = new GameObject("avatar");
         var pet = Object.Instantiate(prefab, avatar.transform);
         var root = pet.transform.Find("Pet_Root");
-        var target = root.Find("Pet_Heading/Pet_Target");
+        var target = root.Find("Pet_Heading/Pet_Side/Pet_Target");
         root.gameObject.SetActive(true);
         for (int i = 0; i < 10; i++) yield return null;
         avatar.transform.position = new Vector3(30, 0, 0); // standing still, so only position changes

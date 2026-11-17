@@ -34,7 +34,7 @@ public class TranslatorPrefabTests
     {
         foreach (var path in new[]
                  {
-                     "Pet_Root/Pet_Heading/Pet_Target", "Pet_Gaze/GazeRay",
+                     "Pet_Root/Pet_Heading/Pet_Side/Pet_Target", "Pet_Gaze/GazeRay",
                      "Pet_Root/Pet_Follow/Pet_Hearts", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/PatZone",
                      "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/Head", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/Visor",
                      "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/EyeL", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/EyeR",
@@ -59,7 +59,7 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_RobotSizeAndPlacement()
     {
-        Assert.AreEqual(new Vector3(0.55f, 0f, 0.55f), Find("Pet_Root/Pet_Heading/Pet_Target").localPosition, "waits at the front right, not at your feet");
+        Assert.AreEqual(new Vector3(0.55f, 0f, 0.55f), Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target").localPosition, "waits at the front right, not at your feet");
         Assert.AreEqual(Vector3.zero, Find(C.PetRootName).localPosition);
         Assert.AreEqual(new Vector3(0.55f, 0f, 0.55f), Find("Pet_Root/Pet_Follow").localPosition, "starts where it waits");
         Assert.AreEqual(Vector3.zero, Find("Pet_Root/Pet_Follow/Pet_Hop").localPosition, "hops from the ground");
@@ -126,7 +126,7 @@ public class TranslatorPrefabTests
         Assert.AreEqual(2, c.Sources.Count);
         Assert.AreEqual(follow, c.Sources[0].SourceTransform, "source 0 is itself: the pose from last frame");
         Assert.AreEqual(1f, c.Sources[0].Weight);
-        Assert.AreEqual(Find("Pet_Root/Pet_Heading/Pet_Target"), c.Sources[1].SourceTransform);
+        Assert.AreEqual(Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target"), c.Sources[1].SourceTransform);
         Assert.AreEqual(C.FollowWeight, c.Sources[1].Weight);
         Assert.AreEqual(2, prefab.GetComponentsInChildren<VRCParentConstraint>(true).Length, "two constraints in total");
     }
@@ -134,7 +134,7 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_ContactNoticesWhenThePetIsLeftBehind()
     {
-        var r = Find("Pet_Root/Pet_Heading/Pet_Target").GetComponent<VRCContactReceiver>();
+        var r = Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target").GetComponent<VRCContactReceiver>();
         Assert.AreEqual(ContactReceiver.ReceiverType.Constant, r.receiverType);
         Assert.AreEqual(C.NearParam, r.parameter);
         Assert.AreEqual(C.CatchUpDistance, r.radius);

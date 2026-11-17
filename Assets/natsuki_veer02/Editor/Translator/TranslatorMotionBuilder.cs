@@ -17,7 +17,7 @@ public static class TranslatorMotionBuilder
     public const string PatLayerName = "Translator_Pat";
 
     public static readonly string HopPath = C.PetFollowName + "/" + C.PetHopName;
-    public static readonly string TargetPath = C.PetHeadingName + "/" + C.PetTargetName;
+    public static readonly string TargetPath = C.PetHeadingName + "/" + C.PetSideName + "/" + C.PetTargetName;
     public static readonly string RobotPath = HopPath + "/" + C.RobotName;
     public static readonly string HeartsPath = C.PetFollowName + "/" + C.HeartsName;
 
@@ -53,6 +53,7 @@ public static class TranslatorMotionBuilder
         BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
         if (petModel != null) TranslatorPetEyes.AddLayer(NewLayer(controller, TranslatorPetWalker.BlinkLayerName), outputDir);
+        if (petModel != null) TranslatorPetWalker.AddSideLayer(controller, NewLayer(controller, TranslatorPetModel.SideLayerName), outputDir);
         if (petModel == null)
             TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
 
