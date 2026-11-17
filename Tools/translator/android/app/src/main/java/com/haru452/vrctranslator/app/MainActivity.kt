@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
         var display by remember { mutableStateOf(settings.display) }
         var katSync by remember { mutableStateOf(settings.katSync.toString()) }
         var micSource by remember { mutableStateOf(settings.micSource) }
+        var ownModel by remember { mutableStateOf(settings.ownModel) }
 
         Column(Modifier.padding(20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("VRC Translator", style = MaterialTheme.typography.headlineSmall)
@@ -111,6 +112,16 @@ class MainActivity : ComponentActivity() {
                     FilterChip(selected = micSource == source, label = { Text(label) }, onClick = {
                         micSource = source
                         settings.micSource = source
+                        store.save(settings)
+                    })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("自分の声の AI:")
+                for ((model, label) in listOf("4B" to "賢い（4B）", "1B" to "速い（1B）")) {
+                    FilterChip(selected = ownModel == model, label = { Text(label) }, onClick = {
+                        ownModel = model
+                        settings.ownModel = model
                         store.save(settings)
                     })
                 }

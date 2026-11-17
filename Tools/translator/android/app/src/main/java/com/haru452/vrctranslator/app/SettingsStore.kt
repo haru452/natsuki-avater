@@ -15,7 +15,7 @@ class SettingsStore(context: Context) {
         display = runCatching { DisplayMode.valueOf(prefs.getString("display", "KAT")!!) }.getOrDefault(DisplayMode.KAT),
         katSync = prefs.getInt("katSync", 8),
         targetLang = if (prefs.getString("targetLang", "EN") == "ZH") Lang.ZH else Lang.EN,
-        ownModel = prefs.getString("ownModel", "1B") ?: "1B",
+        ownModel = if (prefs.getString("ownModel", "4B") == "1B") "1B" else "4B",
         micSource = if (prefs.getString("micSource", "PC") == "PHONE") "PHONE" else "PC",
     )
 

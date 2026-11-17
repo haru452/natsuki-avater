@@ -256,7 +256,7 @@ class OwnVoicePipelineTests {
         p.onOsc(ACTIVE, listOf(true))
         speak(p)
         drain(p)
-        assertTrue(said.any { it.startsWith("時間: 認識") && "翻訳" in it && "1B" in it })
+        assertTrue(said.any { it.startsWith("時間: 認識") && "翻訳" in it && "4B" in it })
     }
 
     @Test fun localAIUnknownMeansLocal() {
