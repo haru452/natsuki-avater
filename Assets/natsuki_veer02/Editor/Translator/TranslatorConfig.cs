@@ -65,6 +65,18 @@ public static class TranslatorConfig
     public const string WearerContactTag = "TranslatorWearer";
     /// <summary>A point this far ahead of the spot: waiting, the model faces the way the wearer faced.</summary>
     public const float AheadDistance = 10f;
+
+    // Name tag over the humanoid pet's head, like VRChat's own: icon, name, a pronoun pill and a status line.
+    /// <summary>Whose face the icon shows: the pet herself (Natsuki).</summary>
+    public const string NameTagAvatarPrefab = PetMaterialSource;
+    /// <summary>The icon photo (TranslatorIconCapture) and the finished tag picture (Tools/translator/nametag.py).</summary>
+    public const string NameTagIconSource = "Assets/natsuki_veer02/Translator/NameTag_Icon.png";
+    public const string NameTagTexture = "Assets/natsuki_veer02/Translator/NameTag.png";
+    public const string NameTagName = "Pet_NameTag";
+    /// <summary>Width of the tag in metres before the pet's own scale; its height follows the picture.</summary>
+    public const float NameTagWidth = 0.55f;
+    /// <summary>Above the head bone, clearing the hair and halo (metres before the pet's scale).</summary>
+    public const float NameTagLift = 0.35f;
     public const float BlinkSeconds = 4f;
     public static readonly (string mesh, string shape)[] PetBlinkShapes = { ("EyeLash", "Blink"), ("Face", "EyeClose"), ("Eye", "EyeClose") };
     /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>

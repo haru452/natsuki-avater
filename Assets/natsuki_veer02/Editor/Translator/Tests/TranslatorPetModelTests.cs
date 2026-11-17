@@ -237,6 +237,23 @@ public class TranslatorPetModelTests
     }
 
     [Test]
+    public void NameTag_FloatsAboveHerHead_FacingWhoeverLooks()
+    {
+        var head = Find(RobotPath).GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var tag = head.Find(C.NameTagName);
+        Assert.IsNotNull(tag, "on her head, so it moves with her");
+        Assert.Greater(tag.position.y, head.position.y + 0.1f, "above the head");
+        var mr = tag.GetComponent<MeshRenderer>();
+        Assert.AreEqual(TranslatorNameTag.ShaderName, mr.sharedMaterial.shader.name, "billboard: always faces the viewer");
+        Assert.AreEqual(AssetDatabase.LoadAssetAtPath<Texture2D>(C.NameTagTexture), mr.sharedMaterial.mainTexture);
+        Assert.IsNull(tag.GetComponent<Collider>());
+        var size = tag.lossyScale;
+        var robotScale = Find(RobotPath).lossyScale.x;
+        Assert.AreEqual(C.NameTagWidth, size.x / robotScale, 0.01f);
+        Assert.AreEqual(C.NameTagWidth * 256f / 768f, size.y / robotScale, 0.01f, "the picture's shape");
+    }
+
+    [Test]
     public void Blink_EveryFewSeconds()
     {
         var blink = Layer(TranslatorPetWalker.BlinkLayerName).defaultState;

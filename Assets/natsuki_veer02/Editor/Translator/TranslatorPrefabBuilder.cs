@@ -59,7 +59,12 @@ public static class TranslatorPrefabBuilder
                 if (look != null) look.localPosition = new Vector3(0, top * 0.6f, 0);
             }
             if (petModel == null) TranslatorReactionsBuilder.AddPatZone(robot);
-            else TranslatorReactionsBuilder.AddPatZone(TranslatorPetModel.FindDeep(robot.transform, "Head"), new Vector3(0, 0.08f, 0));
+            else
+            {
+                var head = TranslatorPetModel.FindDeep(robot.transform, "Head");
+                TranslatorReactionsBuilder.AddPatZone(head, new Vector3(0, 0.08f, 0));
+                TranslatorNameTag.Add(head, robot.transform, outputDir);
+            }
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);
             if (petModel == null) TranslatorSleepBuilder.AddZzz(follow.transform, outputDir);
             AddMerge(pet, TranslatorMotionBuilder.BuildMotionController(outputDir, petModel));
