@@ -49,6 +49,7 @@ public static class TranslatorMotionBuilder
         }
         BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
+        if (petModel != null) TranslatorPetWalker.AddBlinkLayer(NewLayer(controller, TranslatorPetWalker.BlinkLayerName), outputDir);
         if (petModel == null)
             TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
 
@@ -179,10 +180,11 @@ public static class TranslatorMotionBuilder
     /// The animator writes a Transform's whole position, and an axis a clip leaves out becomes 0 — that put the pet
     /// inside the wearer's feet. So the waiting spot always gets all three axes: PetOffset, with z given.
     /// </summary>
-    internal static void SetTarget(AnimationClip clip, AnimationCurve z, float seconds)
+    internal static void SetTarget(AnimationClip clip, AnimationCurve z, float seconds, Vector3? offset = null)
     {
-        Set(clip, TargetPath, "m_LocalPosition.x", AnimationCurve.Constant(0f, seconds, C.PetOffset.x));
-        Set(clip, TargetPath, "m_LocalPosition.y", AnimationCurve.Constant(0f, seconds, C.PetOffset.y));
+        var o = offset ?? C.PetOffset;
+        Set(clip, TargetPath, "m_LocalPosition.x", AnimationCurve.Constant(0f, seconds, o.x));
+        Set(clip, TargetPath, "m_LocalPosition.y", AnimationCurve.Constant(0f, seconds, o.y));
         Set(clip, TargetPath, "m_LocalPosition.z", z);
     }
 

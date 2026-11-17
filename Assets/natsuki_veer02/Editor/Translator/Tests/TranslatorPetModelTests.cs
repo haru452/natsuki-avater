@@ -4,6 +4,9 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
+using VRC.Dynamics;
+using VRC.SDK3.Dynamics.Constraint.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 using C = TranslatorConfig;
 using M = TranslatorMotionBuilder;
 using P = TranslatorPetModel;
@@ -79,9 +82,10 @@ public class TranslatorPetModelTests
     }
 
     [Test]
-    public void Motion_BodyLookPat_NoHopNoSleep()
+    public void Motion_BodyLookPatBlink_NoHopNoSleep()
     {
-        CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName }, c.layers.Select(l => l.name));
+        CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName },
+            c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VoiceParam).type);
     }
@@ -92,8 +96,11 @@ public class TranslatorPetModelTests
         string still = $"{C.VelocityParam}Less{C.SleepStillSpeed}&{C.VoiceParam}Less{C.SleepVoiceLevel}";
         string back = $"{C.VelocityParam}Greater{C.SleepStillSpeed} | {{0}}:{C.VoiceParam}Greater{C.SleepVoiceLevel}";
         Assert.AreEqual("Idle", Layer(P.BodyLayerName).defaultState.name);
-        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Drowsy:{still}", Transitions(State(P.BodyLayerName, "Idle")));
-        Assert.AreEqual($"Idle:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Walk")));
+        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Approach:{C.ArrivedParam}IfNot0 | Drowsy:{still}",
+            Transitions(State(P.BodyLayerName, "Idle")));
+        Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Walk")));
+        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Idle:{C.ArrivedParam}If0",
+            Transitions(State(P.BodyLayerName, "Approach")));
 
         var drowsy = State(P.BodyLayerName, "Drowsy");
         var toBored = drowsy.transitions.Single(t => t.destinationState.name == "Bored");
@@ -114,6 +121,8 @@ public class TranslatorPetModelTests
                                         && b.propertyName == "m_LocalRotation.x"), "Hips rotation");
         Assert.IsFalse(bindings.Any(b => b.type == typeof(Animator)), "no humanoid muscle curves");
         Assert.IsFalse(bindings.Any(b => b.propertyName == "blendShape.Smile"), "smile belongs to petting");
+        Assert.IsFalse(bindings.Any(b => b.propertyName == "blendShape.Blink" || b.propertyName == "blendShape.EyeClose"),
+            "eyelids belong to the blink layer");
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(idle).loopTime);
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(Clip(State(P.BodyLayerName, "Bored"))).loopTime);
         Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(Clip(State(P.BodyLayerName, "Wake"))).loopTime);
@@ -154,5 +163,91 @@ public class TranslatorPetModelTests
         {
             Object.DestroyImmediate(avatar);
         }
+    }
+
+    // ---- Walking the wearer's path, facing forward; waiting farther out; blinking ----
+
+    [Test]
+    public void Prefab_TrailOfEightPointsBehindTheWearer()
+    {
+        var trail = Find("Pet_Root/" + TranslatorPetWalker.TrailName);
+        Assert.AreEqual(C.TrailLinks, trail.childCount);
+        for (int i = 0; i < C.TrailLinks; i++)
+        {
+            var link = trail.GetChild(i).GetComponent<VRCPositionConstraint>();
+            Assert.AreEqual(2, link.Sources.Count, "link " + i);
+            Assert.AreEqual(link.transform, link.Sources[0].SourceTransform, "keeps where it was");
+            Assert.AreEqual(1f, link.Sources[0].Weight);
+            var ahead = i == 0 ? prefab.transform : trail.GetChild(i - 1);
+            Assert.AreEqual(ahead, link.Sources[1].SourceTransform, "creeps toward the point ahead");
+            Assert.AreEqual(C.TrailWeight, link.Sources[1].Weight);
+        }
+    }
+
+    [Test]
+    public void Prefab_FollowCanRideTheTrail_AndHopFacesWhereItGoes()
+    {
+        var follow = Find("Pet_Root/Pet_Follow").GetComponent<VRCParentConstraint>();
+        var last = Find("Pet_Root/" + TranslatorPetWalker.TrailName).GetChild(C.TrailLinks - 1);
+        Assert.AreEqual(3, follow.Sources.Count);
+        Assert.AreEqual(last, follow.Sources[2].SourceTransform);
+        Assert.AreEqual(0f, follow.Sources[2].Weight, "off until walking");
+
+        var aim = Find("Pet_Root/Pet_Follow/Pet_Hop").GetComponent<VRCAimConstraint>();
+        Assert.IsNotNull(aim);
+        CollectionAssert.AreEqual(new[] { last.parent.GetChild(C.TrailLinks - 2), Find("Pet_Root/Pet_Heading/Pet_Target"), prefab.transform },
+            Enumerable.Range(0, 3).Select(i => aim.Sources[i].SourceTransform));
+        Assert.IsFalse(aim.AffectsRotationX);
+        Assert.IsFalse(aim.AffectsRotationZ);
+    }
+
+    [Test]
+    public void Prefab_WaitsTwiceAsFarAsTheRobot_AndKnowsWhenItArrived()
+    {
+        Assert.AreEqual(C.PetOffset * 2f, C.PetModelOffset);
+        Assert.AreEqual(C.PetModelOffset, Find("Pet_Root/Pet_Heading/Pet_Target").localPosition);
+        Assert.AreEqual(C.PetModelOffset, Find("Pet_Root/Pet_Follow").localPosition);
+        var arrive = Find("Pet_Root/Pet_Heading/Pet_Target").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.ArrivedParam);
+        Assert.AreEqual(C.ArriveRadius, arrive.radius);
+        CollectionAssert.AreEqual(new[] { C.PetContactTag }, arrive.collisionTags);
+        Assert.IsFalse(arrive.allowOthers);
+    }
+
+    static float Weight(AnimationClip clip, string path, System.Type type, int source) =>
+        AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, type, "Sources.source" + source + ".Weight")).Evaluate(0f);
+
+    [TestCase("Walk", 1000f, 1f, 0f, 0f)]
+    [TestCase("Approach", 0f, 0f, 1f, 0f)]
+    [TestCase("Idle", 0f, 0f, 0f, 1f)]
+    [TestCase("Bored", 0f, 0f, 0f, 1f)]
+    public void Body_RidesTheTrailOnlyWhileWalking_FacingTheWayItGoes(string state, float trail, float ahead, float spot, float wearer)
+    {
+        var clip = Clip(State(P.BodyLayerName, state));
+        const string follow = "Pet_Follow", hop = "Pet_Follow/Pet_Hop";
+        Assert.AreEqual(trail, Weight(clip, follow, typeof(VRCParentConstraint), 2), "trail");
+        Assert.AreEqual(ahead, Weight(clip, hop, typeof(VRCAimConstraint), 0), "faces the path ahead");
+        Assert.AreEqual(spot, Weight(clip, hop, typeof(VRCAimConstraint), 1), "faces the waiting spot");
+        Assert.AreEqual(wearer, Weight(clip, hop, typeof(VRCAimConstraint), 2), "faces the wearer");
+        foreach (var axis in new[] { 0, 1, 2 })
+            Assert.AreEqual(C.PetModelOffset[axis], AnimationUtility.GetEditorCurve(clip,
+                EditorCurveBinding.FloatCurve(M.TargetPath, typeof(Transform), "m_LocalPosition." + "xyz"[axis])).Evaluate(0f), 1e-4f, "spot " + axis);
+    }
+
+    [Test]
+    public void Blink_EveryFewSeconds()
+    {
+        var blink = Layer(TranslatorPetWalker.BlinkLayerName).defaultState;
+        var clip = Clip(blink);
+        Assert.AreEqual(C.BlinkSeconds, clip.length, 1e-3f);
+        Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
+        var lash = AnimationUtility.GetEditorCurve(clip,
+            EditorCurveBinding.FloatCurve(M.RobotPath + "/EyeLash", typeof(SkinnedMeshRenderer), "blendShape.Blink"));
+        Assert.AreEqual(0f, lash.Evaluate(0f), "open most of the time");
+        Assert.AreEqual(0f, lash.Evaluate(C.BlinkSeconds / 2));
+        float peak = Enumerable.Range(0, 400).Max(i => lash.Evaluate(C.BlinkSeconds * i / 400f));
+        Assert.AreEqual(100f, peak, 1f, "closes fully once");
+        foreach (var mesh in new[] { "Face", "Eye" })
+            Assert.IsNotNull(AnimationUtility.GetEditorCurve(clip,
+                EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape.EyeClose")), mesh);
     }
 }

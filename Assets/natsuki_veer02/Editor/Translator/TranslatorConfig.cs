@@ -42,7 +42,7 @@ public static class TranslatorConfig
 
     // A humanoid model as the pet instead of the robot. Asset Store models cannot be redistributed, so the
     // BOOTH build sets PetModelPath to "" (or leaves the model out) and gets the robot.
-    public const string PetModelPath = "";  // e.g. "Assets/Mryotaisu/Models/Muryotaisu.fbx"
+    public const string PetModelPath = "Assets/Mryotaisu/Models/Muryotaisu.fbx";  // "" for the robot (BOOTH)
     /// <summary>The model's own prefab: its renderers carry the textured materials (the FBX's embedded ones are blank).</summary>
     public const string PetMaterialSource = "Assets/Mryotaisu/Prefabs/Muryotaisu.prefab";
     public const string PetIdleClip = "Assets/Mryotaisu/Animators/IdleA.anim";
@@ -51,6 +51,16 @@ public static class TranslatorConfig
     public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
     public const string PetSmileShape = "Smile";
     public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
+    /// <summary>The model waits twice as far out as the robot.</summary>
+    public static readonly Vector3 PetModelOffset = new Vector3(1.6f, 0f, 1.6f);
+    /// <summary>Invisible points tracing the wearer's path; each creeps this fraction per frame toward the one ahead.</summary>
+    public const int TrailLinks = 8;
+    public const float TrailWeight = 0.1f;
+    /// <summary>On while the model stands at its waiting spot (a contact, not synced).</summary>
+    public const string ArrivedParam = "TranslatorPetArrived";
+    public const float ArriveRadius = 0.3f;
+    public const float BlinkSeconds = 4f;
+    public static readonly (string mesh, string shape)[] PetBlinkShapes = { ("EyeLash", "Blink"), ("Face", "EyeClose"), ("Eye", "EyeClose") };
     /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>
     public const float PetHeightRatio = 0.6f;
     /// <summary>Where the pet waits: in front and to the right of the wearer, on the ground (out from under their feet).</summary>

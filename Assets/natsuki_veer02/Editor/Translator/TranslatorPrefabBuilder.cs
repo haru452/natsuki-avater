@@ -36,8 +36,9 @@ public static class TranslatorPrefabBuilder
             var pet = Child(root.transform, C.PetRootName, Vector3.zero);
             var heading = Child(pet.transform, C.PetHeadingName, Vector3.zero);
             TranslatorReactionsBuilder.AddHeading(heading, root.transform);
-            var target = Child(heading.transform, C.PetTargetName, C.PetOffset);
-            var follow = Child(pet.transform, C.PetFollowName, C.PetOffset);
+            var offset = petModel == null ? C.PetOffset : C.PetModelOffset;
+            var target = Child(heading.transform, C.PetTargetName, offset);
+            var follow = Child(pet.transform, C.PetFollowName, offset);
             AddFollowConstraints(pet, follow, target.transform);
             AddCatchUpContact(target, follow);
             var hop = Child(follow.transform, C.PetHopName, Vector3.zero);
@@ -47,6 +48,16 @@ public static class TranslatorPrefabBuilder
             float top = petModel == null ? C.RobotHeight : TranslatorPetModel.TopHeight(robot.transform);
             var gaze = TranslatorReactionsBuilder.AddGaze(root.transform);
             TranslatorReactionsBuilder.AddFacing(robot, gaze.transform);
+            if (petModel != null)
+            {
+                // Walk the wearer's path facing forward, then round to the spot (TranslatorPetWalker).
+                var links = TranslatorPetWalker.AddTrail(pet.transform, root.transform);
+                TranslatorPetWalker.RideTrail(follow, links[links.Length - 1]);
+                TranslatorPetWalker.AddFacing(hop, links[links.Length - 2], target.transform, root.transform);
+                TranslatorPetWalker.AddArrive(target);
+                var look = robot.transform.Find(TranslatorReactionsBuilder.LookZoneName);
+                if (look != null) look.localPosition = new Vector3(0, top * 0.6f, 0);
+            }
             if (petModel == null) TranslatorReactionsBuilder.AddPatZone(robot);
             else TranslatorReactionsBuilder.AddPatZone(TranslatorPetModel.FindDeep(robot.transform, "Head"), new Vector3(0, 0.08f, 0));
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);

@@ -42,6 +42,7 @@ public class TranslatorOnAvatarPlayTests
         avatar.transform.position = new Vector3(5, 0, 5);
         var pet = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(Dir + "TranslatorPet.prefab"), avatar.transform);
         pet.name = "TranslatorPet";
+        if (pet.transform.Find("Pet_Root/Pet_Trail") != null) Assert.Ignore("humanoid pet: see TranslatorWalkerPlayTests");
 
         var toggle = Drive(pet.transform, "Translator_Toggle.controller");
         var root = pet.transform.Find("Pet_Root");

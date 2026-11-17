@@ -95,19 +95,28 @@ public static class TranslatorPetModel
     public static void AddBodyLayer(AnimatorController controller, AnimatorStateMachine sm, GameObject model, string outputDir)
     {
         controller.AddParameter(C.VoiceParam, AnimatorControllerParameterType.Float);
-        var idleClip = Body(Load(C.PetIdleClip), model, moving: false, loop: true);
+        controller.AddParameter(C.ArrivedParam, AnimatorControllerParameterType.Bool);
+        var walkBody = Bake(Load(C.PetWalkClip), model, M.RobotPath);
+        // Walk: on the wearer's path, facing the path ahead (its own direction of travel, even when the wearer
+        // walks backwards). Approach: same steps, round to the waiting spot. Everything else stands at the spot
+        // facing the wearer. Turning blends over Turn seconds.
+        var idleClip = Body(Bake(Load(C.PetIdleClip), model, M.RobotPath), Pose.Wait, loop: true);
         var idle = State(sm, "Idle", 100, idleClip, outputDir);
-        var walk = State(sm, "Walk", 200, Body(Load(C.PetWalkClip), model, moving: true, loop: true), outputDir);
+        var walk = State(sm, "Walk", 200, Body(walkBody, Pose.Walk, loop: true), outputDir);
+        var approach = State(sm, "Approach", 250, Body(Object.Instantiate(walkBody), Pose.Approach, loop: true), outputDir);
         var drowsy = State(sm, "Drowsy", 300, (AnimationClip)idle.motion, outputDir, save: false);
-        var bored = State(sm, "Bored", 400, Body(Load(C.PetBoredClip), model, moving: false, loop: true), outputDir);
-        var wake = State(sm, "Wake", 500, Body(Load(C.PetWakeClip), model, moving: false, loop: false), outputDir);
+        var bored = State(sm, "Bored", 400, Body(Bake(Load(C.PetBoredClip), model, M.RobotPath), Pose.Wait, loop: true), outputDir);
+        var wake = State(sm, "Wake", 500, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Wait, loop: false), outputDir);
         sm.defaultState = idle;
 
-        Go(idle, walk, 0.15f).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        Go(idle, walk, Turn).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        Go(idle, approach, Turn).AddCondition(AnimatorConditionMode.IfNot, 0f, C.ArrivedParam);
         var settle = Go(idle, drowsy, 0f);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepStillSpeed, C.VelocityParam);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepVoiceLevel, C.VoiceParam);
-        Go(walk, idle, 0.2f).AddCondition(AnimatorConditionMode.Less, C.HopStopSpeed, C.VelocityParam);
+        Go(walk, approach, Turn).AddCondition(AnimatorConditionMode.Less, C.HopStopSpeed, C.VelocityParam);
+        Go(approach, walk, Turn).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        Go(approach, idle, Turn).AddCondition(AnimatorConditionMode.If, 0f, C.ArrivedParam);
 
         // Any movement or sound while drowsy starts the minute again.
         Go(drowsy, idle, 0f).AddCondition(AnimatorConditionMode.Greater, C.SleepStillSpeed, C.VelocityParam);
@@ -139,13 +148,25 @@ public static class TranslatorPetModel
         return t;
     }
 
-    /// <summary>A baked motion plus the follow settings the robot's Idle/Hop clips set (heading, no ambling).</summary>
-    static AnimationClip Body(AnimationClip source, GameObject model, bool moving, bool loop)
+    const float Turn = 0.3f;
+
+    enum Pose { Walk, Approach, Wait }
+
+    /// <summary>
+    /// A baked motion plus where the pet goes and which way it faces: the waiting spot (all axes; the heading
+    /// turns with the wearer while walking), the trail weight and the facing weights (TranslatorPetWalker).
+    /// </summary>
+    static AnimationClip Body(AnimationClip clip, Pose pose, bool loop)
     {
-        var clip = Bake(source, model, M.RobotPath);
         float end = Mathf.Max(clip.length, 1f / Fps);
-        M.SetHeadingWeight(clip, moving ? C.MovingHeadingWeight : 0f, end);
-        M.SetTarget(clip, AnimationCurve.Constant(0f, end, C.PetOffset.z), end);
+        M.SetHeadingWeight(clip, pose == Pose.Walk ? C.MovingHeadingWeight : 0f, end);
+        M.SetTarget(clip, AnimationCurve.Constant(0f, end, C.PetModelOffset.z), end, C.PetModelOffset);
+        switch (pose)
+        {
+            case Pose.Walk: TranslatorPetWalker.SetWalking(clip, end, trail: 1000f, ahead: 1f, spot: 0f, wearer: 0f); break;
+            case Pose.Approach: TranslatorPetWalker.SetWalking(clip, end, trail: 0f, ahead: 0f, spot: 1f, wearer: 0f); break;
+            default: TranslatorPetWalker.SetWalking(clip, end, trail: 0f, ahead: 0f, spot: 0f, wearer: 1f); break;
+        }
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
         settings.loopTime = loop;
         AnimationUtility.SetAnimationClipSettings(clip, settings);
@@ -195,7 +216,7 @@ public static class TranslatorPetModel
 
             foreach (var binding in AnimationUtility.GetCurveBindings(source)
                          .Where(b => b.type == typeof(SkinnedMeshRenderer) && b.propertyName.StartsWith("blendShape.")
-                                     && b.propertyName != "blendShape." + C.PetSmileShape))
+                                     && b.propertyName != "blendShape." + C.PetSmileShape && !TranslatorPetWalker.IsBlinkCurve(b)))
             {
                 var copy = binding;
                 copy.path = robotPath + "/" + binding.path;
