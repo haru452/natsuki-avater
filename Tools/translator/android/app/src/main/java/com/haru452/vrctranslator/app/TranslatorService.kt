@@ -15,6 +15,7 @@ import com.haru452.vrctranslator.core.AudioPacket
 import com.haru452.vrctranslator.core.Rechunker
 import com.haru452.vrctranslator.core.SegmenterSettings
 import com.haru452.vrctranslator.core.Display
+import com.haru452.vrctranslator.core.JaEnRecognizer
 import com.haru452.vrctranslator.core.KatDisplay
 import com.haru452.vrctranslator.core.KuromojiKana
 import com.haru452.vrctranslator.core.OwnVoicePipeline
@@ -141,7 +142,11 @@ class TranslatorService : Service() {
             return
         }
         TranslatorState.status.update { it.copy(models = "読み込んでいます") }
-        val stt = SenseVoice(files.path("senseVoiceModel"), files.path("senseVoiceTokens"))
+        // Own voice is Japanese or English only: a wrong automatic guess is heard again as Japanese.
+        val stt = JaEnRecognizer(
+            SenseVoice(files.path("senseVoiceModel"), files.path("senseVoiceTokens")),
+            SenseVoice(files.path("senseVoiceModel"), files.path("senseVoiceTokens"), language = "ja"),
+        )
         val llm = NativeLlm(mapOf("1B" to files.path("1B"), "4B" to files.path("4B")))
         val kana = KuromojiKana().also { it.toKana("準備") }  // load the dictionary now, not on the first sentence
         TranslatorState.status.update { it.copy(models = "できた") }

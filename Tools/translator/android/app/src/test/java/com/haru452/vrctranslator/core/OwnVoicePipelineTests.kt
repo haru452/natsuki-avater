@@ -11,7 +11,8 @@ import org.junit.Test
 private const val ACTIVE = "/avatar/parameters/TranslatorActive"
 private const val LOCAL_AI = "/avatar/parameters/TranslatorLocalAI"
 
-private val SENTENCE = frames(1.0, 60) + frames(1.0, 6000) + frames(1.0, 60)
+// Speech, then enough silence (over SegmenterSettings.endSilenceS = 1.2 s) to end the sentence.
+private val SENTENCE = frames(1.0, 60) + frames(1.0, 6000) + frames(1.5, 60)
 
 class FakeDisplay : Display {
     val calls = ArrayList<String>()

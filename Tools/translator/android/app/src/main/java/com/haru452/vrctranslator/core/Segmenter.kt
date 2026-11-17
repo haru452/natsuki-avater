@@ -6,7 +6,7 @@ import kotlin.math.sqrt
 
 data class SegmenterSettings(
     var startS: Float = 0.15f,
-    var endSilenceS: Float = 0.8f,
+    var endSilenceS: Float = 1.2f,
     var prerollS: Float = 0.3f,
     var maxS: Float = 60f,
     var minS: Float = 0.5f,

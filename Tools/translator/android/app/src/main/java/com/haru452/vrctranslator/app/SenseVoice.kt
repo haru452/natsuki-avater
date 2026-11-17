@@ -8,13 +8,13 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig
 
-/** SenseVoice (sherpa-onnx): Japanese, English, Chinese... with the language detected automatically. */
-class SenseVoice(modelPath: String, tokensPath: String, threads: Int = 2) : SpeechRecognizer, AutoCloseable {
+/** SenseVoice (sherpa-onnx). language "" detects it automatically; "ja", "en"... fixes it. */
+class SenseVoice(modelPath: String, tokensPath: String, threads: Int = 2, language: String = "") : SpeechRecognizer, AutoCloseable {
     private val recognizer = OfflineRecognizer(
         null,
         OfflineRecognizerConfig(
             modelConfig = OfflineModelConfig(
-                senseVoice = OfflineSenseVoiceModelConfig(model = modelPath, language = "", useInverseTextNormalization = true),
+                senseVoice = OfflineSenseVoiceModelConfig(model = modelPath, language = language, useInverseTextNormalization = true),
                 tokens = tokensPath,
                 numThreads = threads,
                 provider = "cpu",

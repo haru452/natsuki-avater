@@ -35,22 +35,23 @@ class SegmenterTests {
 
     @Test fun oneUtteranceWithPreroll() {
         val seg = Segmenter(SegmenterSettings())
-        val got = feedAll(seg, frames(1.0, quiet) + frames(1.0, speech) + frames(1.0, quiet))
+        val got = feedAll(seg, frames(1.0, quiet) + frames(1.0, speech) + frames(1.5, quiet))
         assertEquals(1, got.size)
         assertTrue(secondsOf(got[0]) > 1.25)
         assertTrue(secondsOf(got[0]) < 1.6)
         assertFalse(seg.recording)
     }
 
-    @Test fun waitsFor08SecondsOfSilence() {
+    // 0.8 s cut sentences into pieces ("うん、なか。") in real use; 1.2 s keeps a sentence whole.
+    @Test fun waitsFor12SecondsOfSilence() {
         val seg = Segmenter(SegmenterSettings())
-        assertEquals(0, feedAll(seg, frames(1.0, quiet) + frames(1.0, speech) + frames(0.6, quiet)).size)
-        assertTrue("a short pause is part of the same sentence", seg.recording)
+        assertEquals(0, feedAll(seg, frames(1.0, quiet) + frames(1.0, speech) + frames(1.0, quiet)).size)
+        assertTrue("a pause of a second is part of the same sentence", seg.recording)
         assertEquals(1, feedAll(seg, frames(0.3, quiet)).size)
     }
 
     @Test fun pauseInsideSentenceKeepsOneUtterance() {
-        val chunks = frames(1.0, quiet) + frames(1.0, speech) + frames(0.5, quiet) + frames(1.0, speech) + frames(1.0, quiet)
+        val chunks = frames(1.0, quiet) + frames(1.0, speech) + frames(0.5, quiet) + frames(1.0, speech) + frames(1.5, quiet)
         assertEquals(1, feedAll(Segmenter(SegmenterSettings()), chunks).size)
     }
 
@@ -58,7 +59,7 @@ class SegmenterTests {
         assertEquals(0, feedAll(Segmenter(SegmenterSettings()), frames(1.0, quiet) + frames(0.3, speech) + frames(1.0, quiet)).size)
 
     @Test fun twoUtterances() {
-        val one = frames(1.0, quiet) + frames(1.0, speech) + frames(1.0, quiet)
+        val one = frames(1.0, quiet) + frames(1.0, speech) + frames(1.5, quiet)
         assertEquals(2, feedAll(Segmenter(SegmenterSettings()), one + one).size)
     }
 
@@ -90,7 +91,7 @@ class SegmenterTests {
     // The PC's microphone array suppresses noise to exact zeros, and quiet speech sits around 200-600.
     @Test fun pcMicHearsQuietSpeech() {
         val seg = Segmenter(SegmenterSettings.forPcMic())
-        val out = feedAll(seg, frames(1.0, 0) + frames(1.0, 400) + frames(1.0, 0))
+        val out = feedAll(seg, frames(1.0, 0) + frames(1.0, 400) + frames(1.5, 0))
         assertEquals(1, out.size)
     }
 }
