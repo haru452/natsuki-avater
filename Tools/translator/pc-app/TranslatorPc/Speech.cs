@@ -27,6 +27,15 @@ sealed class SenseVoice : IRecognizer, IDisposable
 
     public RecognizedSpeech Recognize(short[] pcm)
     {
+        var text = Decode(recognizer, gate, pcm);
+        return new RecognizedSpeech(LangCodes.FromText(text), text, IsSpeech(text));
+    }
+
+    /// <summary>Silence came back as "그." in testing: one letter (ignoring punctuation) is not speech.</summary>
+    internal static bool IsSpeech(string text) => text.Count(char.IsLetterOrDigit) > 1;
+
+    internal static string Decode(OfflineRecognizer recognizer, object gate, short[] pcm)
+    {
         var samples = new float[pcm.Length];
         for (int i = 0; i < pcm.Length; i++) samples[i] = pcm[i] / 32768f;
         lock (gate)
@@ -34,12 +43,43 @@ sealed class SenseVoice : IRecognizer, IDisposable
             using var stream = recognizer.CreateStream();
             stream.AcceptWaveform(Segmenter.Rate, samples);
             recognizer.Decode(stream);
-            var r = stream.Result;
-            var text = (r.Text ?? "").Trim();
-            // Silence came back as "그." in testing: one letter (ignoring punctuation) is not speech.
-            bool speech = text.Count(char.IsLetterOrDigit) > 1;
-            return new RecognizedSpeech(LangCodes.FromText(text), text, speech);
+            return (stream.Result.Text ?? "").Trim();
         }
+    }
+
+    public void Dispose() => recognizer.Dispose();
+}
+
+/// <summary>
+/// ReazonSpeech (k2 zipformer, sherpa-onnx): Japanese only, trained on a large amount of Japanese conversation —
+/// much better at casual Japanese than SenseVoice. No punctuation. Whatever it hears is Japanese.
+/// </summary>
+sealed class ReazonSpeech : IRecognizer, IDisposable
+{
+    const string Encoder = "encoder-epoch-99-avg-1.int8.onnx";
+    readonly OfflineRecognizer recognizer;
+    readonly object gate = new();
+
+    public static bool IsIn(string modelDir) => File.Exists(Path.Combine(modelDir, Encoder));
+
+    public ReazonSpeech(string modelDir, int threads = 2)
+    {
+        var config = new OfflineRecognizerConfig();
+        config.ModelConfig.Transducer.Encoder = Path.Combine(modelDir, Encoder);
+        config.ModelConfig.Transducer.Decoder = Path.Combine(modelDir, "decoder-epoch-99-avg-1.int8.onnx");
+        config.ModelConfig.Transducer.Joiner = Path.Combine(modelDir, "joiner-epoch-99-avg-1.int8.onnx");
+        config.ModelConfig.Tokens = Path.Combine(modelDir, "tokens.txt");
+        config.ModelConfig.NumThreads = threads;
+        config.ModelConfig.Provider = "cpu";
+        config.DecodingMethod = "greedy_search";
+        recognizer = new OfflineRecognizer(config);
+    }
+
+    public RecognizedSpeech Recognize(short[] pcm)
+    {
+        var text = SenseVoice.Decode(recognizer, gate, pcm);
+        bool speech = SenseVoice.IsSpeech(text);
+        return new RecognizedSpeech(speech ? Lang.JA : Lang.NONE, text, speech);
     }
 
     public void Dispose() => recognizer.Dispose();

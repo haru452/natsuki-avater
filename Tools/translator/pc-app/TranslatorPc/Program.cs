@@ -31,13 +31,24 @@ static class Program
 
         Console.WriteLine("音声認識と辞書を読み込んでいます…");
         using var auto = new SenseVoice(modelDir);
-        using var japanese = new SenseVoice(modelDir, language: "ja");
+        using var senseVoiceJa = new SenseVoice(modelDir, language: "ja");
+        // Japanese is heard again by ReazonSpeech when it is there (much better at casual Japanese).
+        string reazonDir = Path.Combine(exeDir, "models", "reazon");
+        using var reazon = ReazonSpeech.IsIn(reazonDir) ? new ReazonSpeech(reazonDir) : null;
         using var kana = new MeCabKana();
         kana.ToKana("準備"); // load the dictionary now, not on the first sentence
-        var stt = new JaEnRecognizer(auto, japanese);
+        var recorder = new SampleRecorder(reazon != null
+            ? new JaEnRecognizer(auto, reazon, refineJapanese: true)
+            : new JaEnRecognizer(auto, senseVoiceJa));
         var deepl = new DeepLClient(() => settings.DeepLKey);
 
-        if (args.Length == 2 && args[0] == "--test-wav") return TestWav(args[1], stt, deepl, kana, settings);
+        if (args.Length == 2 && args[0] == "--test-wav") return TestWav(args[1], recorder, deepl, kana, settings);
+        if (args.Length >= 1 && args[0] == "--compare")
+        {
+            var list = new List<(string, IRecognizer)> { ("SenseVoice", auto), ("SenseVoice-ja", senseVoiceJa) };
+            if (reazon != null) list.Add(("ReazonSpeech", reazon));
+            return Compare.Run(args.Length == 2 ? args[1] : SampleRecorder.Dir, list);
+        }
 
         UdpClient fromVrchat;
         try
@@ -55,7 +66,7 @@ static class Program
         double Now() => clock.Elapsed.TotalSeconds;
         var display = new KatDisplay(Send, settings.Display, settings.KatSync, settings.ShowOriginal, Now, onEvent: screen.Say);
         var log = new TranslationLog(Path.Combine(DataDir, "translation_log.tsv"));
-        var pipeline = new OwnVoice(settings, stt, deepl, display, kana, log.Append, Now, screen.Say);
+        var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say);
 
         var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
@@ -88,15 +99,17 @@ static class Program
                 mic.Update(pipeline.Active); // the microphone is open only while 翻訳 is on
                 screen.Show(new[]
                 {
-                    "VRC Translator PC（K: DeepL のキー / L: 相手の言語 / Ctrl+C: 終わる）",
+                    "VRC Translator PC（K: DeepL のキー / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
                     "",
                     "翻訳:        " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「翻訳」で切り替え）"),
                     "マイク:      " + mic.State,
                     "DeepL キー:  " + Settings.MaskKey(settings.DeepLKey),
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),
+                    "音声認識:    " + (reazon != null ? "SenseVoice + 日本語は ReazonSpeech" : "SenseVoice"),
+                    "声の保存:    " + (recorder.On ? $"オン（{recorder.Saved} 文、{SampleRecorder.Dir}）" : "オフ"),
                     $"CPU:         {cpu.Percent():0.0} %",
                 });
-                HandleKeys(settings, screen);
+                HandleKeys(settings, screen, recorder);
             }
             stop.Token.WaitHandle.WaitOne(50);
         }
@@ -104,12 +117,13 @@ static class Program
         return 0;
     }
 
-    static void HandleKeys(Settings settings, Screen screen)
+    static void HandleKeys(Settings settings, Screen screen, SampleRecorder recorder)
     {
         while (!Console.IsInputRedirected && Console.KeyAvailable)
         {
             var key = Console.ReadKey(intercept: true).Key;
-            if (key == ConsoleKey.L)
+            if (key == ConsoleKey.R) recorder.On = !recorder.On; // saves each sentence's sound (to compare recognizers)
+            else if (key == ConsoleKey.L)
             {
                 settings.TargetLang = settings.TargetLang == Lang.ZH ? Lang.EN : Lang.ZH;
                 settings.Save(Settings.DefaultPath);
@@ -132,9 +146,7 @@ static class Program
     /// <summary>Recognize and translate one WAV file (16 kHz mono 16-bit) and print the result: a check without VRChat.</summary>
     static int TestWav(string path, IRecognizer stt, ITranslator deepl, IKana kana, Settings settings)
     {
-        var bytes = File.ReadAllBytes(path);
-        var pcm = new short[(bytes.Length - 44) / 2];
-        Buffer.BlockCopy(bytes, 44, pcm, 0, pcm.Length * 2);
+        var pcm = Wav.Read(path);
         var sw = Stopwatch.StartNew();
         var heard = stt.Recognize(pcm);
         Console.WriteLine($"認識 {sw.Elapsed.TotalSeconds:0.00} 秒: [{heard.Lang}] {heard.Text}");

@@ -17,6 +17,13 @@ if (-not (Test-Path (Join-Path $models 'model.int8.onnx'))) { throw "models\sens
 New-Item -ItemType Directory -Force (Join-Path $out 'models\sense-voice') | Out-Null
 Copy-Item (Join-Path $models '*') (Join-Path $out 'models\sense-voice') -Force
 
+# Optional: ReazonSpeech for Japanese (about 90 MB; the int8 files and tokens.txt in models\reazon, see README).
+$reazon = Join-Path $here 'models\reazon'
+if (Test-Path (Join-Path $reazon 'encoder-epoch-99-avg-1.int8.onnx')) {
+    New-Item -ItemType Directory -Force (Join-Path $out 'models\reazon') | Out-Null
+    Copy-Item -Path @((Join-Path $reazon '*.int8.onnx'), (Join-Path $reazon 'tokens.txt')) -Destination (Join-Path $out 'models\reazon') -Force
+} else { Write-Host "models\reazon is missing: Japanese will use SenseVoice only" }
+
 $exe = Join-Path $out 'translator_pc.exe'
 $shell = New-Object -ComObject WScript.Shell
 $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'VRC Translator PC.lnk'))

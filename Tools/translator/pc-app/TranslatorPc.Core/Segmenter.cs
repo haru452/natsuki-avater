@@ -121,21 +121,27 @@ public interface IRecognizer
 /// The wearer speaks only Japanese or English. SenseVoice's automatic guess sometimes calls short Japanese Chinese,
 /// Korean or a single English word ("好嘞。", "也希요。", "The."). Keep Japanese and real English sentences (two or
 /// more words, no kana/kanji); hear anything else again with the recognizer fixed to Japanese.
+/// refineJapanese: the Japanese recognizer is better at Japanese (ReazonSpeech), so Japanese is heard again by it too.
 /// </summary>
 public class JaEnRecognizer : IRecognizer
 {
     readonly IRecognizer auto, japanese;
+    readonly bool refineJapanese;
 
-    public JaEnRecognizer(IRecognizer auto, IRecognizer japanese)
+    public JaEnRecognizer(IRecognizer auto, IRecognizer japanese, bool refineJapanese = false)
     {
         this.auto = auto;
         this.japanese = japanese;
+        this.refineJapanese = refineJapanese;
     }
 
     public RecognizedSpeech Recognize(short[] pcm)
     {
         var first = auto.Recognize(pcm);
-        return first.Lang == Lang.JA || IsEnglishSentence(first) ? first : japanese.Recognize(pcm);
+        if (IsEnglishSentence(first)) return first;
+        if (first.Lang == Lang.JA && !refineJapanese) return first;
+        var again = japanese.Recognize(pcm);
+        return first.Lang == Lang.JA && !again.IsSpeech ? first : again;
     }
 
     static bool IsEnglishSentence(RecognizedSpeech r)

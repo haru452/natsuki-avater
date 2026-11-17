@@ -103,4 +103,30 @@ public class SpeechChoiceTests
     [InlineData(Lang.EN, "嗯なか。")]
     public void OtherLanguagesAreHeardAgainAsJapanese(Lang lang, string text) =>
         Assert.Equal("音声入力の質が良くない。", Heard(lang, text).Text);
+
+    // With a Japanese-only model (ReazonSpeech) as the second recognizer, Japanese is heard again by it:
+    // SenseVoice got "ラバタ可いね" for "アバター可愛いね".
+    RecognizedSpeech Refined(Lang lang, string text) =>
+        new JaEnRecognizer(new Fake { Answer = new(lang, text, true) }, japanese, refineJapanese: true).Recognize(new short[16000]);
+
+    [Fact]
+    public void RefiningHearsJapaneseAgainWithTheJapaneseModel()
+    {
+        Assert.Equal("音声入力の質が良くない。", Refined(Lang.JA, "音声入力の質が良く無い").Text);
+        Assert.Equal(1, japanese.Calls);
+    }
+
+    [Fact]
+    public void RefiningLeavesEnglishAlone()
+    {
+        Assert.Equal("Where are you from?", Refined(Lang.EN, "Where are you from?").Text);
+        Assert.Equal(0, japanese.Calls);
+    }
+
+    [Fact]
+    public void RefiningKeepsTheFirstGuessWhenTheJapaneseModelHearsNothing()
+    {
+        japanese.Answer = new(Lang.NONE, "", false);
+        Assert.Equal("こんにちは。", Refined(Lang.JA, "こんにちは。").Text);
+    }
 }
