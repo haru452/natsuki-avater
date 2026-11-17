@@ -64,6 +64,13 @@ class RelayTests(unittest.TestCase):
         again = self.r.from_phone(kat_osc.osc_message("/translator/hello", 222), PHONE)
         self.assertEqual(again, [(ACTIVE_ON, PHONE_IN)])
 
+    def test_every_hello_gets_an_ack_so_the_phone_knows_the_pc_is_there(self):
+        ack = kat_osc.osc_message("/translator/ack", True)
+        self.assertEqual(self.r.ack_for(HELLO, PHONE), [(ack, PHONE_IN)])
+        self.assertEqual(self.r.ack_for(HELLO, PHONE), [(ack, PHONE_IN)], "again, even for the same phone")
+        self.assertEqual(self.r.ack_for(ACTIVE_ON, PHONE), [], "only hello is acknowledged")
+        self.assertEqual(self.r.ack_for(b"garbage", PHONE), [])
+
     def test_only_text_messages_reach_vrchat(self):
         for address, value in (("/avatar/parameters/GestureLeft", 1), ("/input/Jump", 1),
                                ("/avatar/parameters/TranslatorActive", True)):

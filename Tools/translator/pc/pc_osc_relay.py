@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import kat_osc  # noqa: E402
 
 HELLO = "/translator/hello"
+ACK = "/translator/ack"
 AVATAR_CHANGE = "/avatar/change"
 FORWARD_TO_PHONE = {
     kat_osc.PARAM_PREFIX + "TranslatorActive",
@@ -54,6 +55,16 @@ class Relay:
         if not address.startswith(FROM_PHONE_PREFIXES):
             return []
         return [(data, self.vrchat)]
+
+    def ack_for(self, data, addr):
+        """Answer every hello, so the phone can show that the PC is there before VRChat sends anything."""
+        try:
+            address, _ = kat_osc.parse_message(data)
+        except ValueError:
+            return []
+        if address != HELLO:
+            return []
+        return [(kat_osc.osc_message(ACK, True), (addr[0], self.phone_port))]
 
     def from_vrchat(self, data):
         try:
@@ -113,7 +124,7 @@ def main(phone_listen=("0.0.0.0", 9002), vrchat_listen=("127.0.0.1", 9001)):
                     continue
                 data, addr = packet_in
                 if key.data == "phone":
-                    outgoing = relay.from_phone(data, addr)
+                    outgoing = relay.from_phone(data, addr) + relay.ack_for(data, addr)
                     if relay.phone != known_phone:
                         known_phone = relay.phone
                         print("スマホを見つけました: %s" % known_phone[0])
