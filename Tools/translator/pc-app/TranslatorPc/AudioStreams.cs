@@ -102,7 +102,7 @@ class MicSource : CaptureSource
         try
         {
             using var devices = new MMDeviceEnumerator();
-            var mic = devices.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+            var mic = ChooseMic(devices);
             Start(new WasapiCapture(mic), "送っています（" + mic.FriendlyName + "）");
         }
         catch (Exception e)
@@ -110,6 +110,40 @@ class MicSource : CaptureSource
             State = "マイクを開けません: " + e.Message;
         }
     }
+
+/// <summary>
+/// The mic VRChat records from: the device named in VRChat's settings, else Windows' default recording device
+/// (the Console role, which is what VRChat's "Default" uses — not the Communications default, which on laptops
+/// is often the built-in mic array).
+/// </summary>
+static MMDevice ChooseMic(MMDeviceEnumerator devices)
+{
+    var all = devices.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active).ToList();
+    int? i = MicChoice.Pick(all.Select(d => d.FriendlyName).ToList(), VrchatMicName());
+    return i is int n ? all[n] : devices.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Console);
+}
+
+/// <summary>VRChat keeps its chosen mic (desktop or VR) in the registry; empty means "Default".</summary>
+static string? VrchatMicName()
+{
+    try
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\VRChat\VRChat");
+        if (key == null) return null;
+        foreach (var name in key.GetValueNames().Where(n => n.StartsWith("VRC_INPUT_MIC_DEVICE_NAME_")))
+        {
+            string value = key.GetValue(name) switch
+            {
+                byte[] b => System.Text.Encoding.UTF8.GetString(b).TrimEnd((char)0),
+                string str => str,
+                _ => "",
+            };
+            if (value.Trim().Length > 0) return value;
+        }
+    }
+    catch (Exception) { /* no access: use the default */ }
+    return null;
+}
 }
 
 /// <summary>Only VRChat's sound (not YouTube, Discord, …): Windows' per-process loopback.</summary>
