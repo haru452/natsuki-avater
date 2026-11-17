@@ -1,0 +1,9 @@
+.gradle/
+build/
+local.properties
+native/.build/
+native/.llama.cpp/
+app/libs/*.aar
+*.gguf
+*.onnx
+*.apk
