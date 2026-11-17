@@ -39,8 +39,8 @@ public static class TranslatorConfig
 
     /// <summary>Height of the robot pet, from the ground to the top of its head.</summary>
     public const float RobotHeight = 0.40f;
-    /// <summary>Where the pet waits: the wearer's right, on the ground.</summary>
-    public static readonly Vector3 PetOffset = new Vector3(0.5f, 0f, 0f);
+    /// <summary>Where the pet waits: in front and to the right of the wearer, on the ground (out from under their feet).</summary>
+    public static readonly Vector3 PetOffset = new Vector3(0.8f, 0f, 0.4f);
 
     /// <summary>
     /// Follow strength: weight of Pet_Target against the pet's own last pose (weight 1).

@@ -57,9 +57,9 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_RobotSizeAndPlacement()
     {
-        Assert.AreEqual(new Vector3(0.5f, 0f, 0f), Find("Pet_Root/Pet_Heading/Pet_Target").localPosition, "waits at the right");
+        Assert.AreEqual(new Vector3(0.8f, 0f, 0.4f), Find("Pet_Root/Pet_Heading/Pet_Target").localPosition, "waits at the front right, not at your feet");
         Assert.AreEqual(Vector3.zero, Find(C.PetRootName).localPosition);
-        Assert.AreEqual(new Vector3(0.5f, 0f, 0f), Find("Pet_Root/Pet_Follow").localPosition, "starts where it waits");
+        Assert.AreEqual(new Vector3(0.8f, 0f, 0.4f), Find("Pet_Root/Pet_Follow").localPosition, "starts where it waits");
         Assert.AreEqual(Vector3.zero, Find("Pet_Root/Pet_Follow/Pet_Hop").localPosition, "hops from the ground");
 
         var robot = Find("Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot");
