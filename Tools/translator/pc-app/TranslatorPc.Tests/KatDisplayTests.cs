@@ -68,6 +68,19 @@ public class KatDisplayTests
         Assert.DoesNotContain(again, IsClear);
     }
 
+    // A cell that caught a wrong character ("it" showed as "iふ") is rewritten within about a second.
+    [Fact]
+    public void PageIsRewrittenWithinASecond()
+    {
+        d.Show(JaResult);
+        Run(d, 1.5);
+        Take();
+        Run(d, 1.2);
+        var again = Take();
+        Assert.Contains(again, p => p.Address.EndsWith("KAT_Pointer"));
+        Assert.DoesNotContain(again, IsClear);
+    }
+
     [Fact]
     public void CharactersFollowTheirPointerAfterAPause()
     {

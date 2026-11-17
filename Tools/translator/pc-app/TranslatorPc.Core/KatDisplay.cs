@@ -15,7 +15,8 @@ public interface IDisplay
 
 /// <summary>
 /// Thinking / Show / Error / Clear / Stop, then Tick every ~50 ms. A shown page is rewritten (without clearing)
-/// every resendSeconds so late joiners get all of it; long text turns pages pageSeconds after a page is written.
+/// every resendSeconds (1 s) so late joiners get all of it and a cell that caught a wrong character in passing
+/// ("it" showed as "iふ") is put right; long text turns pages pageSeconds after a page is written.
 /// An answer on screen is never cut short: "...", errors and clears wait, and a newer answer queues behind it.
 /// Not thread-safe: call it under one lock.
 /// </summary>
@@ -23,7 +24,7 @@ public class KatDisplay : IDisplay
 {
     public const int MaxBacklog = 3;
     /// <summary>Characters follow their pointer this long after it (both within one step).</summary>
-    public const double PointerSeconds = 0.1;
+    public const double PointerSeconds = 0.15;
 
     readonly Action<byte[]> send;
     readonly int sync;
@@ -42,7 +43,7 @@ public class KatDisplay : IDisplay
     List<List<string>> backlog = new();
 
     public KatDisplay(Action<byte[]> send, DisplayMode mode, int sync, bool showOriginal, Func<double> clock,
-        double pageSeconds = 5, double resendSeconds = 3, double stepSeconds = 0.25, double errorSeconds = 3,
+        double pageSeconds = 5, double resendSeconds = 1, double stepSeconds = 0.25, double errorSeconds = 3,
         Action<string>? onEvent = null)
     {
         this.send = send;
