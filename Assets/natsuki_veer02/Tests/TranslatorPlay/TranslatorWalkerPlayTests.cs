@@ -190,6 +190,12 @@ public class TranslatorWalkerPlayTests
         motion.SetFloat("VelocityMagnitude", 0f);
         for (int i = 0; i < 600; i++) { Arrived(); yield return null; }
         Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(-0.55f, 0, 0.55f)), 0.35f, "waits at the front left");
+
+        // Mirror mode: she comes back level with the wearer (right beside them), so she is not inside the mirror.
+        motion.SetBool("TranslatorPetMirror", true);
+        for (int i = 0; i < 600; i++) { Arrived(); yield return null; }
+        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(-0.55f, 0, 0f)), 0.35f, "right beside the wearer");
+        Assert.Greater(Vector3.Dot(hop.forward, avatar.transform.forward), 0.9f, "facing the mirror, as the wearer does");
     }
 
     /// <summary>Inside a capsule contact (it runs along its local Y), as VRChat works it out.</summary>

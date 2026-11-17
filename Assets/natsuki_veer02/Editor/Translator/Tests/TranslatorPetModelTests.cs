@@ -364,14 +364,37 @@ public class TranslatorPetModelTests
             EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform), "m_LocalScale.x")).Evaluate(0f);
         Assert.AreEqual(1f, Scale("Right"));
         Assert.AreEqual(-1f, Scale("Left"));
+        Assert.AreEqual(1f, Scale("RightMirror"));
+        Assert.AreEqual(-1f, Scale("LeftMirror"));
         Assert.AreEqual("Right", Layer(P.SideLayerName).defaultState.name);
-        Assert.AreEqual($"Left:{C.PetLeftParam}If0&{C.CloseParam}IfNot0", Transitions(State(P.SideLayerName, "Right")));
-        Assert.AreEqual($"Right:{C.PetRightParam}If0&{C.CloseParam}IfNot0", Transitions(State(P.SideLayerName, "Left")));
-        foreach (var state in new[] { "Right", "Left" })
-            foreach (var axis in new[] { "y", "z" })
-                Assert.AreEqual(1f, AnimationUtility.GetEditorCurve(Clip(State(P.SideLayerName, state)),
-                    EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform), "m_LocalScale." + axis)).Evaluate(0f),
-                    "every axis written (a missing one becomes 0)");
+        Assert.AreEqual($"Left:{C.PetLeftParam}If0&{C.CloseParam}IfNot0 | RightMirror:{C.MirrorParam}If0", Transitions(State(P.SideLayerName, "Right")));
+        Assert.AreEqual($"Right:{C.PetRightParam}If0&{C.CloseParam}IfNot0 | LeftMirror:{C.MirrorParam}If0", Transitions(State(P.SideLayerName, "Left")));
+        Assert.AreEqual($"LeftMirror:{C.PetLeftParam}If0&{C.CloseParam}IfNot0 | Right:{C.MirrorParam}IfNot0", Transitions(State(P.SideLayerName, "RightMirror")));
+        Assert.AreEqual($"RightMirror:{C.PetRightParam}If0&{C.CloseParam}IfNot0 | Left:{C.MirrorParam}IfNot0", Transitions(State(P.SideLayerName, "LeftMirror")));
+        float Get(string state, string prop) => AnimationUtility.GetEditorCurve(Clip(State(P.SideLayerName, state)),
+            EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform), prop)).Evaluate(0f);
+        foreach (var state in new[] { "Right", "Left", "RightMirror", "LeftMirror" })
+        {
+            Assert.AreEqual(1f, Get(state, "m_LocalScale.y"), "every axis written (a missing one becomes 0)");
+            Assert.AreEqual(1f, Get(state, "m_LocalScale.z"));
+            Assert.AreEqual(0f, Get(state, "m_LocalPosition.x"));
+            Assert.AreEqual(0f, Get(state, "m_LocalPosition.y"));
+            // Mirror mode: the spot comes back level with the wearer (right beside them, not in front, so not in the mirror).
+            Assert.AreEqual(state.EndsWith("Mirror") ? -C.PetOffset.z : 0f, Get(state, "m_LocalPosition.z"), 1e-4f, state);
+        }
+    }
+
+    [Test]
+    public void MirrorMode_IsASyncedToggleInTheMenu()
+    {
+        var p = prefab.GetComponent<ModularAvatarParameters>().parameters.Single(x => x.nameOrPrefix == C.MirrorParam);
+        Assert.AreEqual(ParameterSyncType.Bool, p.syncType, "everyone sees her beside the wearer");
+        Assert.IsFalse(p.saved);
+        var menu = prefab.GetComponent<ModularAvatarMenuInstaller>().menuToAppend.controls.Single().subMenu;
+        var toggle = menu.controls.Single(c => c.name == C.MirrorLabel);
+        Assert.AreEqual(C.MirrorParam, toggle.parameter.name);
+        Assert.IsTrue(c.parameters.Any(x => x.name == C.MirrorParam));
+        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 1, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it");
     }
 
     [Test]

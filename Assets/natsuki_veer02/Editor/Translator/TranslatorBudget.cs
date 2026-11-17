@@ -13,13 +13,14 @@ public static class TranslatorBudget
     public static int SyncedBits(int katSyncCount) => 2 + KatBits(katSyncCount);
 
     /// <summary>Bits the prefab adds to these parameters; names the avatar already declares are not counted twice.</summary>
-    public static int AddedBits(VRCExpressionParameters parameters, int katSyncCount)
+    /// <param name="mirror">the prefab has the humanoid's mirror-mode toggle (one more bit)</param>
+    public static int AddedBits(VRCExpressionParameters parameters, int katSyncCount, bool mirror = false)
     {
         // Unity's == null, not ?.: a missing asset reference is a fake-null object.
         var existing = parameters != null && parameters.parameters != null
             ? parameters.parameters.Where(p => p != null).Select(p => p.name).ToHashSet()
             : new System.Collections.Generic.HashSet<string>();
-        return TranslatorPrefabBuilder.ParameterList(katSyncCount)
+        return TranslatorPrefabBuilder.ParameterList(katSyncCount, mirror)
             .Where(p => !existing.Contains(p.nameOrPrefix))
             .Sum(p => p.syncType == nadena.dev.modular_avatar.core.ParameterSyncType.Bool ? 1 : 8);
     }

@@ -79,7 +79,9 @@ public static class TranslatorSetup
 
         RefuseExistingKat(avatarRoot, descriptor);
         int used = TranslatorBudget.UsedBits(descriptor.expressionParameters);
-        int total = used + TranslatorBudget.AddedBits(descriptor.expressionParameters, katSyncCount);
+        bool mirror = prefab.GetComponent<nadena.dev.modular_avatar.core.ModularAvatarParameters>()?.parameters
+            .Any(p => p.nameOrPrefix == C.MirrorParam) == true;
+        int total = used + TranslatorBudget.AddedBits(descriptor.expressionParameters, katSyncCount, mirror);
         if (total > TranslatorBudget.Limit)
             throw new InvalidOperationException(
                 $"[Translator] 同期パラメータが {total} / {TranslatorBudget.Limit} ビットになり、上限を超えます（今 {used} ビット使用中）。"

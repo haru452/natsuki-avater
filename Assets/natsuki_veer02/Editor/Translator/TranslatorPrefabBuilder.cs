@@ -29,8 +29,8 @@ public static class TranslatorPrefabBuilder
         var root = new GameObject(C.RootName);
         try
         {
-            AddParameters(root, katSyncCount);
-            root.AddComponent<ModularAvatarMenuInstaller>().menuToAppend = BuildMenus(outputDir);
+            AddParameters(root, katSyncCount, mirror: petModel != null);
+            root.AddComponent<ModularAvatarMenuInstaller>().menuToAppend = BuildMenus(outputDir, mirror: petModel != null);
             AddMerge(root, TranslatorAnimationBuilder.BuildToggleController(outputDir));
 
             var pet = Child(root.transform, C.PetRootName, Vector3.zero);
@@ -142,7 +142,8 @@ public static class TranslatorPrefabBuilder
     }
 
     /// <summary>The parameters the prefab declares, in the order they appear in MA Parameters.</summary>
-    public static List<ParameterConfig> ParameterList(int katSyncCount)
+    /// <summary>mirror: the humanoid's mirror-mode toggle (one more synced bit).</summary>
+    public static List<ParameterConfig> ParameterList(int katSyncCount, bool mirror = false)
     {
         var list = new List<ParameterConfig>
         {
@@ -153,6 +154,7 @@ public static class TranslatorPrefabBuilder
         };
         for (int i = 0; i < katSyncCount; i++)
             list.Add(Param(C.KatCharSyncPrefix + i, ParameterSyncType.Float, saved: false));
+        if (mirror) list.Add(Param(C.MirrorParam, ParameterSyncType.Bool, saved: false));
         return list;
     }
 
@@ -165,8 +167,8 @@ public static class TranslatorPrefabBuilder
         hasExplicitDefaultValue = true,
     };
 
-    static void AddParameters(GameObject root, int katSyncCount) =>
-        root.AddComponent<ModularAvatarParameters>().parameters = ParameterList(katSyncCount);
+    static void AddParameters(GameObject root, int katSyncCount, bool mirror) =>
+        root.AddComponent<ModularAvatarParameters>().parameters = ParameterList(katSyncCount, mirror);
 
     static void AddMerge(GameObject go, RuntimeAnimatorController controller)
     {
@@ -178,13 +180,15 @@ public static class TranslatorPrefabBuilder
     }
 
     /// <summary>A menu holding one submenu, "翻訳", with the on/off toggle and the AI switch.</summary>
-    static VRCExpressionsMenu BuildMenus(string outputDir)
+    static VRCExpressionsMenu BuildMenus(string outputDir, bool mirror)
     {
-        var sub = SaveMenu(outputDir + "/" + SubMenuAssetName, new List<VRCExpressionsMenu.Control>
+        var controls = new List<VRCExpressionsMenu.Control>
         {
             Toggle(C.ActiveLabel, C.ActiveParam),
             Toggle(C.LocalAILabel, C.LocalAIParam),
-        });
+        };
+        if (mirror) controls.Add(Toggle(C.MirrorLabel, C.MirrorParam));
+        var sub = SaveMenu(outputDir + "/" + SubMenuAssetName, controls);
         return SaveMenu(outputDir + "/" + MenuAssetName, new List<VRCExpressionsMenu.Control>
         {
             new VRCExpressionsMenu.Control

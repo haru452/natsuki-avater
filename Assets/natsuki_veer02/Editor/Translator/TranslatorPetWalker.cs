@@ -89,18 +89,23 @@ public static class TranslatorPetWalker
 
     /// <summary>
     /// Right (Pet_Side scale x +1) or Left (-1): the spot on the side she is on. Switched only when she sets off
-    /// (the wearer is no longer close), never while she waits.
+    /// (the wearer is no longer close), never while she waits. Mirror mode (the menu) brings the spot back level
+    /// with the wearer (Pet_Side z = -PetOffset.z): right beside them, not in front, so not inside the mirror.
     /// </summary>
     public static void AddSideLayer(AnimatorController controller, AnimatorStateMachine sm, string outputDir)
     {
         controller.AddParameter(C.PetLeftParam, AnimatorControllerParameterType.Bool);
         controller.AddParameter(C.PetRightParam, AnimatorControllerParameterType.Bool);
+        controller.AddParameter(C.MirrorParam, AnimatorControllerParameterType.Bool);
+        string path = C.PetHeadingName + "/" + C.PetSideName;
         AnimatorState Side(string name, float x, float y)
         {
             var clip = new AnimationClip();
-            foreach (var (axis, v) in new[] { ("x", x), ("y", 1f), ("z", 1f) })
-                AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform),
-                    "m_LocalScale." + axis), AnimationCurve.Constant(0f, 1f / 60f, v));
+            float back = name.EndsWith("Mirror") ? -C.PetOffset.z : 0f;
+            foreach (var (prop, v) in new[] { ("m_LocalScale.x", x), ("m_LocalScale.y", 1f), ("m_LocalScale.z", 1f),
+                         ("m_LocalPosition.x", 0f), ("m_LocalPosition.y", 0f), ("m_LocalPosition.z", back) })
+                AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, typeof(Transform), prop),
+                    AnimationCurve.Constant(0f, 1f / 60f, v));
             var s = sm.AddState(name, new Vector3(300, y));
             s.motion = TranslatorAnimationBuilder.SaveClip(clip, outputDir + "/Translator_PetSide" + name + ".anim");
             s.writeDefaultValues = false;
@@ -108,14 +113,23 @@ public static class TranslatorPetWalker
         }
         var right = Side("Right", 1f, 100);
         var left = Side("Left", -1f, 200);
+        var rightMirror = Side("RightMirror", 1f, 300);
+        var leftMirror = Side("LeftMirror", -1f, 400);
         sm.defaultState = right;
-        foreach (var (from, to, param) in new[] { (right, left, C.PetLeftParam), (left, right, C.PetRightParam) })
+        AnimatorStateTransition Go(AnimatorState from, AnimatorState to)
         {
             var t = from.AddTransition(to);
             t.hasExitTime = false;
             t.duration = 0f;
+            return t;
+        }
+        foreach (var (from, to, param, mirror) in new[] { (right, left, C.PetLeftParam, rightMirror), (left, right, C.PetRightParam, leftMirror),
+                     (rightMirror, leftMirror, C.PetLeftParam, right), (leftMirror, rightMirror, C.PetRightParam, left) })
+        {
+            var t = Go(from, to);
             t.AddCondition(AnimatorConditionMode.If, 0f, param);
             t.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
+            Go(from, mirror).AddCondition(from.name.EndsWith("Mirror") ? AnimatorConditionMode.IfNot : AnimatorConditionMode.If, 0f, C.MirrorParam);
         }
     }
 

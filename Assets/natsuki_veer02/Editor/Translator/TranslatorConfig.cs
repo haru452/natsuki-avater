@@ -72,6 +72,9 @@ public static class TranslatorConfig
     public const string PetSideName = "Pet_Side";
     public const string PetLeftParam = "TranslatorPetLeft";
     public const string PetRightParam = "TranslatorPetRight";
+    /// <summary>Mirror mode (menu): she waits right beside the wearer instead of in front, so not inside the mirror.</summary>
+    public const string MirrorParam = "TranslatorPetMirror";
+    public const string MirrorLabel = "鏡モード";
     /// <summary>
     /// Each side's sensing capsule, lying front to back (SideSenseLength long, so it also covers her when she is
     /// behind the wearer): this radius, its edge SideSenseGap from the wearer's middle (no flip-flop behind them).
