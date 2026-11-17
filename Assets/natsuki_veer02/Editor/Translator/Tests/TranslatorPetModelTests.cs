@@ -315,6 +315,28 @@ public class TranslatorPetModelTests
         Assert.IsNotNull(text.GetComponent<ModularAvatarMergeAnimator>(), "KAT's animator merged here");
     }
 
+    // Crouching, the wearer's face is lower than hers: her head tilts toward it (not only her body turning).
+    [Test]
+    public void Look_HerHeadTiltsTowardTheWearersFace()
+    {
+        var robot = Find(RobotPath);
+        var head = robot.GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var aim = head.GetComponent<VRCAimConstraint>();
+        Assert.IsNotNull(aim, "on the head bone");
+        Assert.AreEqual(Find(C.GazeName), aim.Sources[0].SourceTransform, "the wearer's face");
+        Assert.IsTrue(aim.AffectsRotationX && aim.AffectsRotationY, "up/down too");
+        Assert.AreEqual(0f, aim.GlobalWeight, "off until looked at");
+        Assert.Greater(Vector3.Dot(head.TransformDirection(aim.AimAxis), robot.forward), 0.99f, "aims with her face");
+        Assert.Greater(Vector3.Dot(head.TransformDirection(aim.UpAxis), Vector3.up), 0.99f);
+
+        string headPath = AnimationUtility.CalculateTransformPath(head, Find("Pet_Root"));
+        float Weight(string state) => AnimationUtility.GetEditorCurve(Clip(State(M.LookLayerName, state)),
+            EditorCurveBinding.FloatCurve(headPath, typeof(VRCAimConstraint), "GlobalWeight")).Evaluate(0f);
+        Assert.AreEqual(C.HeadLookWeight, Weight("Look"));
+        Assert.AreEqual(0f, Weight("Away"));
+        Assert.Less(C.HeadLookWeight, 1f, "part of the way, so the neck never bends too far");
+    }
+
     [Test]
     public void Blink_EveryFewSeconds()
     {

@@ -158,6 +158,19 @@ public class TranslatorWalkerPlayTests
         for (int i = 0; i < 600; i++) { Arrived(); yield return null; }
         Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.55f, 0, 0.55f)), 0.35f, "follows once the wearer is away");
         Assert.Greater(Vector3.Dot(hop.forward, Vector3.forward), 0.9f, "and faces the wearer's new direction");
+
+        // The wearer crouches and looks at her: their face is low, a little in front of her. Her head tips down to it.
+        var head = hop.GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var aim = head.GetComponent<VRC.SDK3.Dynamics.Constraint.Components.VRCAimConstraint>();
+        var gaze = pet.transform.Find("Pet_Gaze");
+        gaze.position = follow.position + hop.forward * 0.8f + Vector3.up * 0.25f;
+        motion.SetBool("TranslatorPetLooked", true);
+        for (int i = 0; i < 60; i++) { Arrived(); yield return null; }
+        var faceDir = head.TransformDirection(aim.AimAxis);
+        var toFace = (gaze.position - head.position).normalized;
+        Debug.Log($"[WalkDiag] crouch: head looks {faceDir}, face is {toFace}");
+        Assert.Less(faceDir.y, -0.2f, "looks down at the crouching wearer");
+        Assert.Greater(Vector3.Dot(faceDir, toFace), 0.85f, "toward their face (most of the way)");
     }
 }
 #endif

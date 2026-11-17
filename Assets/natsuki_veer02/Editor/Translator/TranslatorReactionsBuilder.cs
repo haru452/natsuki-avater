@@ -78,6 +78,22 @@ public static class TranslatorReactionsBuilder
             new[] { C.GazeTag }, C.LookedParam, allowOthers: false);
     }
 
+    /// <summary>
+    /// The humanoid's head bone aims at the wearer's face (all axes: up and down too). Its own axes are worked out
+    /// from the model's forward and up, as bones point every which way. Off until the Look layer fades it in.
+    /// </summary>
+    public static void AddHeadLook(Transform head, Transform model, Transform gaze)
+    {
+        var aim = head.gameObject.AddComponent<VRCAimConstraint>();
+        aim.Sources.Add(new VRCConstraintSource(gaze, 1f));
+        aim.AimAxis = head.InverseTransformDirection(model.forward).normalized;
+        aim.UpAxis = head.InverseTransformDirection(Vector3.up).normalized;
+        aim.WorldUp = VRCConstraintBase.WorldUpType.SceneUp;
+        aim.GlobalWeight = 0f;
+        aim.IsActive = true;
+        aim.Locked = true;
+    }
+
     /// <summary>Any player's hand or finger on the head (including the wearer's own).</summary>
     public static void AddPatZone(GameObject robot) => AddPatZone(robot.transform, new Vector3(0, 0.3f, 0));
 

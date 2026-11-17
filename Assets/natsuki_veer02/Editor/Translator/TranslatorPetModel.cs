@@ -48,6 +48,10 @@ public static class TranslatorPetModel
             if (byName.TryGetValue(r.name, out var s)) r.sharedMaterials = s.sharedMaterials;
     }
 
+    /// <summary>The model's head bone, as a path from Pet_Root (for the motion clips).</summary>
+    public static string HeadPath(GameObject model) =>
+        M.RobotPath + "/" + AnimationUtility.CalculateTransformPath(FindDeep(model.transform, "Head"), model.transform);
+
     public static Transform FindDeep(Transform root, string name) =>
         root.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == name);
 

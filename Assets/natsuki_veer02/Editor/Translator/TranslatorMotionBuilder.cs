@@ -36,9 +36,17 @@ public static class TranslatorMotionBuilder
 
         if (petModel == null) BuildHopLayer(controller, outputDir);
         else TranslatorPetModel.AddBodyLayer(controller, NewLayer(controller, TranslatorPetModel.BodyLayerName), petModel, outputDir);
-        BuildTwoStateLayer(controller, LookLayerName, outputDir,
-            "Away", WeightClip(typeof(VRCAimConstraint), RobotPath, "GlobalWeight", 0f, Frame),
-            "Look", WeightClip(typeof(VRCAimConstraint), RobotPath, "GlobalWeight", 1f, Frame),
+        var away = WeightClip(typeof(VRCAimConstraint), RobotPath, "GlobalWeight", 0f, Frame);
+        var look = WeightClip(typeof(VRCAimConstraint), RobotPath, "GlobalWeight", 1f, Frame);
+        if (petModel != null)
+        {
+            // Her head also tilts toward the wearer's face (TranslatorReactionsBuilder.AddHeadLook).
+            string head = TranslatorPetModel.HeadPath(petModel);
+            foreach (var (clip, w) in new[] { (away, 0f), (look, C.HeadLookWeight) })
+                AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(head, typeof(VRCAimConstraint), "GlobalWeight"),
+                    AnimationCurve.Constant(0f, Frame, w));
+        }
+        BuildTwoStateLayer(controller, LookLayerName, outputDir, "Away", away, "Look", look,
             C.LookedParam, C.LookTurnSeconds, holdSeconds: 0f);
         var calm = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame);
         var hearts = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds);

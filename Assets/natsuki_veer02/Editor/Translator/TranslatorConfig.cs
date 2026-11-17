@@ -129,6 +129,11 @@ public static class TranslatorConfig
     public const float GazeRadius = 0.25f;
     public const float LookZoneRadius = 0.3f;
     public const float LookTurnSeconds = 0.3f;
+    /// <summary>
+    /// The humanoid's head turns this share of the way toward the wearer's face while looked at (up and down too,
+    /// so she looks down at a crouching wearer); less than all the way, so her neck never bends too far.
+    /// </summary>
+    public const float HeadLookWeight = 0.7f;
 
     // Petting the head (anyone's hand) makes hearts.
     public const string PatParam = "TranslatorPetPat";
