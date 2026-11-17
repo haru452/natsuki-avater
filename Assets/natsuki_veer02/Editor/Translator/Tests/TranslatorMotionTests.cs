@@ -33,9 +33,10 @@ public class TranslatorMotionTests
     static AnimationCurve Hop(AnimatorState state, string property) => Curve(state, M.HopPath, typeof(Transform), property);
 
     [Test]
-    public void HasThreeLayers_AllWriteDefaultsOff()
+    public void HasFourLayers_AllWriteDefaultsOff()
     {
-        CollectionAssert.AreEqual(new[] { M.HopLayerName, M.LookLayerName, M.PatLayerName }, c.layers.Select(l => l.name));
+        CollectionAssert.AreEqual(new[] { M.HopLayerName, M.LookLayerName, M.PatLayerName, TranslatorSleepBuilder.LayerName },
+            c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.All(l => l.defaultWeight == 1f));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VelocityParam).type);

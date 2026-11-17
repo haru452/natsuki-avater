@@ -5,9 +5,9 @@ using VRC.SDK3.Dynamics.Constraint.Components;
 using C = TranslatorConfig;
 
 /// <summary>
-/// The pet's own motion, merged on Pet_Root (paths are relative to it). Three layers:
+/// The pet's own motion, merged on Pet_Root (paths are relative to it). Four layers:
 /// Hop (walking: hop, and let the waiting spot turn with the wearer; standing: amble back and forth),
-/// Look (face the wearer while they look at the pet) and Pat (hearts while petted).
+/// Look (face the wearer while they look at the pet), Pat (hearts while petted) and Sleep (TranslatorSleepBuilder).
 /// </summary>
 public static class TranslatorMotionBuilder
 {
@@ -42,12 +42,13 @@ public static class TranslatorMotionBuilder
             "Calm", WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame),
             "Hearts", WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds),
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
+        TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
 
         EditorUtility.SetDirty(controller);
         return controller;
     }
 
-    static AnimatorStateMachine NewLayer(AnimatorController controller, string name)
+    internal static AnimatorStateMachine NewLayer(AnimatorController controller, string name)
     {
         controller.AddLayer(name);
         var layers = controller.layers;

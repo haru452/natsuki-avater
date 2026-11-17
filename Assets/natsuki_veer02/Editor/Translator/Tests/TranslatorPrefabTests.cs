@@ -36,8 +36,10 @@ public class TranslatorPrefabTests
                  {
                      "Pet_Root/Pet_Heading/Pet_Target", "Pet_Gaze/GazeRay",
                      "Pet_Root/Pet_Follow/Pet_Hearts", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/PatZone",
-                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/Head", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/Visor",
-                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/EyeL", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/EyeR",
+                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/Head", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/Visor",
+                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/EyeL", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/EyeR",
+                     "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/EyeSleepL", "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/EyeSleepR",
+                     "Pet_Root/Pet_Follow/Pet_Zzz",
                      "Pet_Root/Pet_Follow/Pet_Text/KillFrenzyAvatarText/Constraint/Text",
                      "Sign_Root/Sign_Board/Front", "Sign_Root/Sign_Board/Back",
                  })
@@ -57,9 +59,9 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_RobotSizeAndPlacement()
     {
-        Assert.AreEqual(new Vector3(0.8f, 0f, 0.4f), Find("Pet_Root/Pet_Heading/Pet_Target").localPosition, "waits at the front right, not at your feet");
+        Assert.AreEqual(new Vector3(0.8f, 0f, 0.8f), Find("Pet_Root/Pet_Heading/Pet_Target").localPosition, "waits at the front right, not at your feet");
         Assert.AreEqual(Vector3.zero, Find(C.PetRootName).localPosition);
-        Assert.AreEqual(new Vector3(0.8f, 0f, 0.4f), Find("Pet_Root/Pet_Follow").localPosition, "starts where it waits");
+        Assert.AreEqual(new Vector3(0.8f, 0f, 0.8f), Find("Pet_Root/Pet_Follow").localPosition, "starts where it waits");
         Assert.AreEqual(Vector3.zero, Find("Pet_Root/Pet_Follow/Pet_Hop").localPosition, "hops from the ground");
 
         var robot = Find("Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot");
@@ -74,7 +76,7 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_RobotLooksForward()
     {
-        const string robot = "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/";
+        const string robot = "Pet_Root/Pet_Follow/Pet_Hop/Pet_Robot/HeadPivot/";
         var head = Find(robot + "Head");
         foreach (var eye in new[] { "EyeL", "EyeR" })
         {
@@ -85,6 +87,12 @@ public class TranslatorPrefabTests
         var l = Find(robot + "EyeL").localPosition;
         var r = Find(robot + "EyeR").localPosition;
         Assert.AreEqual(new Vector3(-r.x, r.y, r.z), l, "eyes are mirrored");
+        foreach (var eye in new[] { "EyeSleepL", "EyeSleepR" })
+        {
+            var t = Find(robot + eye);
+            Assert.IsFalse(t.gameObject.activeSelf, eye + " is hidden while awake");
+            Assert.AreEqual(Find(robot + eye.Replace("Sleep", "")).localPosition, t.localPosition, eye + " sits where the eye is");
+        }
     }
 
     /// <summary>World bounds from mesh and transform; renderer bounds are empty on prefab assets.</summary>

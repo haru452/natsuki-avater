@@ -40,7 +40,7 @@ public static class TranslatorConfig
     /// <summary>Height of the robot pet, from the ground to the top of its head.</summary>
     public const float RobotHeight = 0.40f;
     /// <summary>Where the pet waits: in front and to the right of the wearer, on the ground (out from under their feet).</summary>
-    public static readonly Vector3 PetOffset = new Vector3(0.8f, 0f, 0.4f);
+    public static readonly Vector3 PetOffset = new Vector3(0.8f, 0f, 0.8f);
 
     /// <summary>
     /// Follow strength: weight of Pet_Target against the pet's own last pose (weight 1).
@@ -94,6 +94,17 @@ public static class TranslatorConfig
     /// <summary>Scale on landing (wide and flat) and at the top of the hop (tall and thin).</summary>
     public static readonly Vector3 HopSquash = new Vector3(1.12f, 0.82f, 1.12f);
     public static readonly Vector3 HopStretch = new Vector3(0.94f, 1.1f, 0.94f);
+    // Sleep: after a minute of the wearer standing still and silent, the eyes close to bars and Zzz float up.
+    // Moving or talking wakes it: a few head shakes with eyes shut, then the eyes open.
+    public const string VoiceParam = "Voice";
+    public const float SleepAfterSeconds = 60f;
+    public const float SleepStillSpeed = 0.05f;
+    public const float SleepVoiceLevel = 0.08f;
+    public const float WakeShakeSeconds = 1f;
+    public const float WakeShakeAngle = 20f;
+    public const int WakeShakes = 3;
+    public const string ZzzName = "Pet_Zzz";
+
     public const float TextHeightAboveRobot = 0.12f;
     /// <summary>Size of KAT's text quad (32 characters x 4 rows).</summary>
     public static readonly Vector2 TextSize = new Vector2(0.5f, 1f / 6f);

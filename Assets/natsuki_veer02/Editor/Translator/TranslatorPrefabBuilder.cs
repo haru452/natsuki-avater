@@ -45,6 +45,7 @@ public static class TranslatorPrefabBuilder
             TranslatorReactionsBuilder.AddFacing(robot, gaze.transform);
             TranslatorReactionsBuilder.AddPatZone(robot);
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir);
+            TranslatorSleepBuilder.AddZzz(follow.transform, outputDir);
             AddMerge(pet, TranslatorMotionBuilder.BuildMotionController(outputDir));
             var text = Child(follow.transform, C.TextName, new Vector3(0, C.RobotHeight + C.TextHeightAboveRobot, 0));
             BuildKatText(text.transform);

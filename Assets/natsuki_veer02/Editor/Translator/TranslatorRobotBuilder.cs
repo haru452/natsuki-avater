@@ -16,6 +16,11 @@ public static class TranslatorRobotBuilder
     public const string HeadName = "Head";
     public const string VisorName = "Visor";
     public const string BodyName = "Body";
+    /// <summary>The neck: the head and everything on it turn around this point (the wake-up head shake).</summary>
+    public const string HeadPivotName = "HeadPivot";
+    public const string SleepEyeLeftName = "EyeSleepL";
+    public const string SleepEyeRightName = "EyeSleepR";
+    public const float NeckHeight = 0.2f;
 
     public static readonly Color White = new Color(0.97f, 0.97f, 0.98f);
     public static readonly Color Dark = new Color(0.04f, 0.05f, 0.07f);
@@ -24,7 +29,7 @@ public static class TranslatorRobotBuilder
 
     public struct Materials
     {
-        public Material White, Dark, Grey, Eye, Smile;
+        public Material White, Dark, Grey, Eye, Smile, SleepEye;
     }
 
     public static Materials CreateMaterials(string outputDir) => new Materials
@@ -34,6 +39,7 @@ public static class TranslatorRobotBuilder
         Grey = TranslatorAssetGenerator.SaveMaterial(Lit(Grey, 0.4f), outputDir + "/Robot_Grey.mat"),
         Eye = Unlit(DrawEye(), outputDir + "/Robot_Eye"),
         Smile = Unlit(DrawSmile(), outputDir + "/Robot_Smile"),
+        SleepEye = Unlit(TranslatorSleepBuilder.DrawSleepEye(), outputDir + "/Robot_SleepEye"),
     };
 
     public static GameObject Build(Transform parent, string outputDir)
@@ -42,6 +48,10 @@ public static class TranslatorRobotBuilder
         var robot = new GameObject(C.RobotName);
         robot.transform.SetParent(parent, false);
         var t = robot.transform;
+        var head = new GameObject(HeadPivotName).transform;
+        head.SetParent(t, false);
+        head.localPosition = new Vector3(0, NeckHeight, 0);
+        const float n = NeckHeight;
 
         foreach (var side in new[] { -1f, 1f })
         {
@@ -49,7 +59,7 @@ public static class TranslatorRobotBuilder
             Part(PrimitiveType.Sphere, "Foot" + s, t, new Vector3(0.055f * side, 0.0225f, 0.01f), new Vector3(0.07f, 0.045f, 0.09f), m.Grey);
             Part(PrimitiveType.Capsule, "Arm" + s, t, new Vector3(0.105f * side, 0.115f, 0f), new Vector3(0.045f, 0.05f, 0.045f), m.White,
                 Quaternion.Euler(0, 0, 25f * side));
-            Part(PrimitiveType.Cylinder, "Ear" + s, t, new Vector3(0.137f * side, 0.29f, 0f), new Vector3(0.06f, 0.012f, 0.06f), m.Grey,
+            Part(PrimitiveType.Cylinder, "Ear" + s, head, new Vector3(0.137f * side, 0.29f - n, 0f), new Vector3(0.06f, 0.012f, 0.06f), m.Grey,
                 Quaternion.Euler(0, 0, 90f));
         }
 
@@ -57,10 +67,14 @@ public static class TranslatorRobotBuilder
         Part(PrimitiveType.Sphere, "ChestScreen", t, new Vector3(0, 0.12f, 0.075f), new Vector3(0.075f, 0.055f, 0.02f), m.Dark);
         Face(PrimitiveType.Quad, "Smile", t, new Vector3(0, 0.118f, 0.0865f), 0.05f, m.Smile);
 
-        Part(PrimitiveType.Sphere, HeadName, t, new Vector3(0, 0.29f, 0), new Vector3(0.27f, 0.22f, 0.22f), m.White);
-        Part(PrimitiveType.Sphere, VisorName, t, new Vector3(0, 0.285f, 0.088f), new Vector3(0.21f, 0.135f, 0.06f), m.Dark);
-        Face(PrimitiveType.Quad, EyeLeftName, t, new Vector3(0.045f, 0.29f, 0.1195f), 0.05f, m.Eye);
-        Face(PrimitiveType.Quad, EyeRightName, t, new Vector3(-0.045f, 0.29f, 0.1195f), 0.05f, m.Eye);
+        Part(PrimitiveType.Sphere, HeadName, head, new Vector3(0, 0.29f - n, 0), new Vector3(0.27f, 0.22f, 0.22f), m.White);
+        Part(PrimitiveType.Sphere, VisorName, head, new Vector3(0, 0.285f - n, 0.088f), new Vector3(0.21f, 0.135f, 0.06f), m.Dark);
+        foreach (var (name, sleepName, x) in new[] { (EyeLeftName, SleepEyeLeftName, 0.045f), (EyeRightName, SleepEyeRightName, -0.045f) })
+        {
+            var pos = new Vector3(x, 0.29f - n, 0.1195f);
+            Face(PrimitiveType.Quad, name, head, pos, 0.05f, m.Eye);
+            Face(PrimitiveType.Quad, sleepName, head, pos, 0.05f, m.SleepEye).SetActive(false);
+        }
         return robot;
     }
 
@@ -79,7 +93,7 @@ public static class TranslatorRobotBuilder
     }
 
     /// <summary>A flat decal facing forward. Quads show their face toward -Z, so turn them around.</summary>
-    static void Face(PrimitiveType type, string name, Transform parent, Vector3 pos, float size, Material mat) =>
+    static GameObject Face(PrimitiveType type, string name, Transform parent, Vector3 pos, float size, Material mat) =>
         Part(type, name, parent, pos, Vector3.one * size, mat, Quaternion.Euler(0, 180, 0));
 
     static Material Lit(Color color, float smoothness)
