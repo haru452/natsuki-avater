@@ -132,14 +132,15 @@ public class OwnVoice
             return;
         }
         var source = heard.Lang;
-        var target = source == Lang.JA ? settings.TargetLang : Lang.JA;
+        // English is shown as it is (no Japanese anywhere: the wearer did not want it on screen).
+        var target = source == Lang.JA ? settings.TargetLang : Lang.EN;
         lock (gate) display.ChatboxOnly = target != Lang.EN;
 
         double t1 = clock();
         string translation;
         try
         {
-            translation = translator.Translate(heard.Text, source, target).Trim();
+            translation = source == Lang.EN ? heard.Text.Trim() : translator.Translate(heard.Text, source, target).Trim();
         }
         catch (DeepLException e)
         {

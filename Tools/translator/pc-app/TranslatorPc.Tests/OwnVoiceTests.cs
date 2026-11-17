@@ -126,7 +126,7 @@ public class OwnVoiceTests
     }
 
     [Fact]
-    public void EnglishGoesToJapaneseWithKana()
+    public void EnglishIsShownAsItIs_NoJapaneseAnywhere()
     {
         stt.Answer = new(Lang.EN, "Good morning", true);
         translator.Reply = _ => "おはよう";
@@ -134,9 +134,10 @@ public class OwnVoiceTests
         p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
         Speak(p);
         p.ProcessNext(0);
-        Assert.Equal(Lang.JA, translator.Calls.Single().Item3);
-        Assert.Contains("show おはよう (かな(おはよう)) -> JA", display.Events);
-        Assert.True(display.ChatboxOnly, "Japanese goes to the chatbox, never the pet's text");
+        Assert.Empty(translator.Calls);
+        Assert.Contains(display.Events, e => e.StartsWith("show Good morning") && e.EndsWith("-> EN"));
+        Assert.DoesNotContain(display.Events, e => e.Contains("おはよう"));
+        Assert.False(display.ChatboxOnly, "on the pet");
     }
 
     [Fact]
