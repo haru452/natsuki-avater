@@ -241,6 +241,23 @@ class OwnVoicePipelineTests {
         assertTrue(said.any { it.startsWith("出しません") && "안녕" in it })
     }
 
+    @Test fun micLevelIsReportedEveryFiveSeconds() {
+        val (p, _) = make()
+        p.onOsc(ACTIVE, listOf(true))
+        for (f in frames(6.0, 300)) { p.feedFrame(f); now += 0.03 }
+        val levels = said.filter { it.startsWith("音量") }
+        assertEquals(1, levels.size)
+        assertTrue(levels[0], "最大 213" in levels[0] && "しきい値" in levels[0])
+    }
+
+    @Test fun stageTimesAreReported() {
+        val (p, _) = make()
+        p.onOsc(ACTIVE, listOf(true))
+        speak(p)
+        drain(p)
+        assertTrue(said.any { it.startsWith("時間: 認識") && "翻訳" in it && "1B" in it })
+    }
+
     @Test fun localAIUnknownMeansLocal() {
         val (p, _) = make()
         assertTrue(p.useLocalAI)

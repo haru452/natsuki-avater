@@ -42,6 +42,8 @@ class OwnVoicePipeline(
     private val segmenter = Segmenter(settings.segmenter)
     private val queue = LinkedBlockingQueue<Recording>()
     private var generation = 0  // bumped whenever listening stops, so older recordings are dropped
+    private var levelMax = 0f
+    private var levelSince = Double.NaN
 
     var active = false
         private set
@@ -99,10 +101,22 @@ class OwnVoicePipeline(
     // --- audio and translation ------------------------------------------------
 
     fun feedFrame(frame: ShortArray) {
+        var report: String? = null
         val item = synchronized(lock) {
             if (!active) return
-            segmenter.feed(frame)?.let { Recording(it, generation, clock()) }
+            // Diagnostics: the loudest frame of the last 5 s against the voice threshold.
+            val t = clock()
+            if (levelSince.isNaN()) levelSince = t
+            levelMax = maxOf(levelMax, Segmenter.rms(frame))
+            if (t - levelSince >= 5.0) {
+                report = "音量: 最大 ${levelMax.toInt()} / しきい値 ${segmenter.threshold.toInt()}" +
+                    (if (segmenter.recording) "（録音中）" else "")
+                levelMax = 0f
+                levelSince = t
+            }
+            segmenter.feed(frame)?.let { Recording(it, generation, t) }
         }
+        report?.let(say)
         if (item != null) {
             queue.put(item)
             say("区切り: %.1f 秒".format(item.pcm.size / Segmenter.RATE.toDouble()))
@@ -133,7 +147,9 @@ class OwnVoicePipeline(
             display.thinking()
         }
 
+        val t0 = clock()
         val heard = stt.recognize(item.pcm)
+        val recognizeSeconds = clock() - t0
         if (!heard.isSpeech || heard.lang !in listOf(Lang.JA, Lang.EN, Lang.ZH) || heard.text.isBlank()) {
             val why = if (!heard.isSpeech) "話し声ではない" else "言語 ${heard.lang}"
             say("出しません（$why）: ${heard.text}")
@@ -154,6 +170,8 @@ class OwnVoicePipeline(
             return
         }
         val took = clock() - started
+        val model = TranslationPrompt.modelFor(source, target, settings.ownModel)
+        say("時間: 認識 %.1f 秒 / 翻訳 %.1f 秒（%s）/ 待ち %.1f 秒".format(recognizeSeconds, took, model, started - item.recordedAt - recognizeSeconds))
         if (took > SLOW_SECONDS) onStatus("遅くなっています（${took.toInt()} 秒）")
 
         val translation = TranslationPrompt.clean(raw)
