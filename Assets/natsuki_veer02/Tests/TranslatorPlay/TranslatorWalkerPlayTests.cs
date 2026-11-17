@@ -10,8 +10,8 @@ using UnityEngine.TestTools;
 using VRC.Dynamics;
 
 /// <summary>
-/// A humanoid pet (when the built prefab has one) on riko2: walks the wearer's path facing its own way of travel —
-/// also when the wearer walks backwards — then goes round to the waiting spot and faces the wearer.
+/// A humanoid pet (when the built prefab has one) on riko2: when the wearer moves, walks toward its spot facing its own way of travel —
+/// also when the wearer walks backwards — and once there faces the wearer.
 /// The motion controller runs on Pet_Root as Modular Avatar merges it; "arrived" is set from the distance
 /// (the contact does the same in VRChat).
 /// </summary>
@@ -24,10 +24,10 @@ public class TranslatorWalkerPlayTests
     public void TearDown() => Object.Destroy(avatar);
 
     [UnityTest]
-    public IEnumerator Model_WalksThePathFacingForward_EvenWhenTheWearerWalksBackwards_ThenWaitsAndFacesThem()
+    public IEnumerator Model_WalksTowardItsSpotFacingForward_EvenWhenTheWearerWalksBackwards_ThenWaitsAndFacesThem()
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Dir + "TranslatorPet.prefab");
-        if (prefab.transform.Find("Pet_Root/Pet_Trail") == null) Assert.Ignore("the robot build has no trail");
+        if (prefab.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) Assert.Ignore("the robot hops instead");
         Application.targetFrameRate = 60;
 
         avatar = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/riko2/Prefab/riko2.prefab"));
@@ -80,9 +80,9 @@ public class TranslatorWalkerPlayTests
                 var moved = follow.position - last;
                 last = follow.position;
                 biggestStep = Mathf.Max(biggestStep, moved.magnitude / Time.deltaTime);
-                if (path.Count > 90 && moved.magnitude > 0.005f)
+                if (path.Count > 60 && moved.magnitude > 0.005f)
                 {
-                    offPath.Add(DistanceToPath(follow.position, path));
+                    offPath.Add(Vector3.Distance(follow.position, target.position));
                     facing.Add(Vector3.Dot(hop.forward, moved.normalized));
                     if (facing[facing.Count - 1] < 0.7f)
                         Debug.Log($"[WalkDiag] bad facing {facing[facing.Count - 1]:0.00} at sample {facing.Count} leg {dir} walked {walked:0.00} " +
@@ -90,10 +90,10 @@ public class TranslatorWalkerPlayTests
                 }
             }
         }
-        Debug.Log($"[WalkDiag] max off path {offPath.Max():0.00} m, worst facing {facing.Min():0.00}, " +
+        Debug.Log($"[WalkDiag] farthest from its spot {offPath.Max():0.00} m, worst facing {facing.Min():0.00}, " +
                   $"mean facing {facing.Average():0.00}, samples {facing.Count}, fastest {biggestStep:0.0} m/s");
         Assert.Less(biggestStep, 6f, "never jumps: no faster than a little over the wearer's run");
-        Assert.Less(offPath.Max(), 0.35f, "walks where the wearer walked");
+        Assert.Less(offPath.Max(), 2.5f, "heads for its spot beside the wearer instead of trailing behind");
         Assert.Greater(facing.Where((_, i) => i > facing.Count / 10).Min(), 0.7f, "faces the way it goes, never backwards");
 
         // Stop: round to the front right, then face the wearer.
@@ -112,21 +112,17 @@ public class TranslatorWalkerPlayTests
         var toWearer = avatar.transform.position - hop.position;
         toWearer.y = 0;
         Assert.Greater(Vector3.Dot(hop.forward, toWearer.normalized), 0.9f, "faces the wearer");
-    }
 
-    static float DistanceToPath(Vector3 p, List<Vector3> path)
-    {
-        float best = float.MaxValue;
-        for (int i = 1; i < path.Count; i++)
+        // Looking around without moving: one full turn on the spot. The pet stays where it is.
+        var before = follow.position;
+        for (float turned = 0; turned < 360f; turned += 120f * Time.deltaTime)
         {
-            var a = path[i - 1];
-            var b = path[i];
-            var ab = b - a;
-            float t = ab.sqrMagnitude > 0 ? Mathf.Clamp01(Vector3.Dot(p - a, ab) / ab.sqrMagnitude) : 0;
-            var q = a + ab * t;
-            best = Mathf.Min(best, Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z)));
+            avatar.transform.rotation *= Quaternion.Euler(0, 120f * Time.deltaTime, 0);
+            Arrived();
+            yield return null;
         }
-        return best;
+        for (int i = 0; i < 60; i++) { Arrived(); yield return null; }
+        Assert.Less(Vector3.Distance(follow.position, before), 0.05f, "stays put while the wearer only looks around");
     }
 }
 #endif

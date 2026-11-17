@@ -21,7 +21,6 @@ public class TranslatorFollowPlayTests
         Assert.IsNotNull(prefab, "Build the prefab first: Tools > Translator Pet > Build Prefab");
         avatar = new GameObject("avatar");
         var pet = Object.Instantiate(prefab, avatar.transform);
-        if (pet.transform.Find("Pet_Root/Pet_Trail") != null) Assert.Ignore("robot follow; the humanoid pet: TranslatorWalkerPlayTests");
         var root = pet.transform.Find("Pet_Root");
         var follow = root.Find("Pet_Follow");
         root.gameObject.SetActive(true); // what the toggle's On state does
@@ -47,7 +46,6 @@ public class TranslatorFollowPlayTests
         var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
         avatar = new GameObject("avatar");
         var pet = Object.Instantiate(prefab, avatar.transform);
-        if (pet.transform.Find("Pet_Root/Pet_Trail") != null) Assert.Ignore("robot follow; the humanoid pet: TranslatorWalkerPlayTests");
         var root = pet.transform.Find("Pet_Root");
         var follow = root.Find("Pet_Follow");
         root.gameObject.SetActive(true);
@@ -74,7 +72,6 @@ public class TranslatorFollowPlayTests
         var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
         avatar = new GameObject("avatar");
         var pet = Object.Instantiate(prefab, avatar.transform);
-        if (pet.transform.Find("Pet_Root/Pet_Trail") != null) Assert.Ignore("robot follow; the humanoid pet: TranslatorWalkerPlayTests");
         var root = pet.transform.Find("Pet_Root");
         var follow = root.Find("Pet_Follow");
         root.gameObject.SetActive(true);
@@ -92,7 +89,6 @@ public class TranslatorFollowPlayTests
         var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
         avatar = new GameObject("avatar");
         var pet = Object.Instantiate(prefab, avatar.transform);
-        if (pet.transform.Find("Pet_Root/Pet_Trail") != null) Assert.Ignore("robot follow; the humanoid pet: TranslatorWalkerPlayTests");
         var root = pet.transform.Find("Pet_Root");
         var target = root.Find("Pet_Heading/Pet_Target");
         root.gameObject.SetActive(true);

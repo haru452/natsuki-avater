@@ -51,14 +51,6 @@ public static class TranslatorConfig
     public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
     public const string PetSmileShape = "Smile";
     public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
-    /// <summary>
-    /// The model walks some way behind on the wearer's path, so it is only snapped over (a teleport) when this far
-    /// from its spot; the robot's CatchUpDistance would snap it back and forth while the wearer runs.
-    /// </summary>
-    public const float ModelCatchUpDistance = 10f;
-    /// <summary>Invisible points tracing the wearer's path; each creeps this fraction per frame toward the one ahead.</summary>
-    public const int TrailLinks = 8;
-    public const float TrailWeight = 0.2f;
     /// <summary>On while the model stands at its waiting spot (a contact, not synced).</summary>
     public const string ArrivedParam = "TranslatorPetArrived";
     public const float ArriveRadius = 0.3f;
@@ -90,6 +82,11 @@ public static class TranslatorConfig
     public const string PetHeadingName = "Pet_Heading";
     public const string HeadingWeightProperty = "Sources.source1.Weight";
     public const float MovingHeadingWeight = 1000f;
+    /// <summary>
+    /// The humanoid's spot turns with the wearer gradually while walking (this much per frame against its own
+    /// direction), so a snap turn does not send the pet dashing round to the other side.
+    /// </summary>
+    public const float PetModelHeadingWeight = 0.08f;
 
     // Standing still, the pet ambles forward and back.
     public const float WanderDistance = 0.15f;

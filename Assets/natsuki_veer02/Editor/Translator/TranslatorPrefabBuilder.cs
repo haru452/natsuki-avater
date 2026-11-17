@@ -39,7 +39,7 @@ public static class TranslatorPrefabBuilder
             var target = Child(heading.transform, C.PetTargetName, C.PetOffset);
             var follow = Child(pet.transform, C.PetFollowName, C.PetOffset);
             AddFollowConstraints(pet, follow, target.transform);
-            AddCatchUpContact(target, follow, petModel == null ? C.CatchUpDistance : C.ModelCatchUpDistance);
+            AddCatchUpContact(target, follow);
             var hop = Child(follow.transform, C.PetHopName, Vector3.zero);
             var robot = petModel == null
                 ? TranslatorRobotBuilder.Build(hop.transform, outputDir)
@@ -49,10 +49,8 @@ public static class TranslatorPrefabBuilder
             TranslatorReactionsBuilder.AddFacing(robot, gaze.transform);
             if (petModel != null)
             {
-                // Walk the wearer's path facing forward, then round to the spot (TranslatorPetWalker).
-                var links = TranslatorPetWalker.AddTrail(pet.transform, root.transform);
-                TranslatorPetWalker.RideTrail(follow, links[links.Length - 1]);
-                TranslatorPetWalker.AddFacing(hop, links[links.Length - 2], target.transform, root.transform);
+                // Walk toward the spot facing the way it goes; wait there facing the wearer (TranslatorPetWalker).
+                TranslatorPetWalker.AddFacing(hop, target.transform, root.transform);
                 TranslatorPetWalker.AddArrive(target);
                 var look = robot.transform.Find(TranslatorReactionsBuilder.LookZoneName);
                 if (look != null) look.localPosition = new Vector3(0, top * 0.6f, 0);
@@ -110,11 +108,11 @@ public static class TranslatorPrefabBuilder
     /// Teleport detection: a Constant receiver on Pet_Target is on while the pet's sender is within
     /// CatchUpDistance. When it goes off, the toggle layer snaps the pet over. Only this avatar's own sender counts.
     /// </summary>
-    static void AddCatchUpContact(GameObject target, GameObject follow, float distance)
+    static void AddCatchUpContact(GameObject target, GameObject follow)
     {
         var r = target.AddComponent<VRCContactReceiver>();
         r.shapeType = ContactBase.ShapeType.Sphere;
-        r.radius = distance;
+        r.radius = C.CatchUpDistance;
         r.collisionTags = new List<string> { C.PetContactTag };
         r.allowSelf = true;
         r.allowOthers = false;
