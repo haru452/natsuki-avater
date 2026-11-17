@@ -36,6 +36,8 @@ class KatDisplay(
     companion object {
         const val MAX_BACKLOG = 3
         private val POINTER = KatOsc.PARAM_PREFIX + "KAT_Pointer"
+        /** Characters follow their pointer this long after it (both within one stepSeconds). */
+        const val POINTER_SECONDS = 0.1
     }
 
     private val katMode = mode == DisplayMode.KAT || mode == DisplayMode.BOTH
@@ -116,9 +118,20 @@ class KatDisplay(
         if (queue.isNotEmpty()) {
             if (now >= next) {
                 val group = queue.removeAt(0)
+                val isPointer = group.size > 1 && KatOsc.parseMessage(group[0]).first == POINTER
+                if (isPointer) {
+                    // KAT writes whatever characters are current into the pointer's cells until the pointer moves,
+                    // so move the pointer first and send its characters a moment later ("yeah" became "yeあh").
+                    safeSend(group[0])
+                    queue.add(0, group.drop(1))
+                    next = now + POINTER_SECONDS
+                    return
+                }
                 group.forEach(::safeSend)
                 val isClear = group.size == 1 && KatOsc.parseMessage(group[0]) == (POINTER to listOf<Any>(KatOsc.CLEAR_POINTER))
-                next = now + stepSeconds * (if (isClear) 2 else 1)  // hold the clear so nobody misses it
+                val isChars = KatOsc.parseMessage(group[0]).first != POINTER
+                // Hold the clear so nobody misses it; a pointer + characters pair keeps its step in total.
+                next = now + stepSeconds * (if (isClear) 2 else 1) - (if (isChars) POINTER_SECONDS else 0.0)
                 if (queue.isEmpty()) writtenAt = now
             }
             return

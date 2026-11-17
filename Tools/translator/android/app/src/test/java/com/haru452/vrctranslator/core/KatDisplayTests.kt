@@ -69,16 +69,33 @@ class KatDisplayTests {
 
     @Test fun groupsAreSpacedOut() {
         d.show(r("ja", "x", "a".repeat(40), "x"))
-        val times = ArrayList<Double>()
+        val pointerTimes = ArrayList<Double>()
         repeat(40) {
             now = round((now + 0.05) * 10000) / 10000
-            val before = packets.size
             d.tick()
-            if (packets.size > before) times.add(now)
+            if (take().any { it.first.endsWith("KAT_Pointer") }) pointerTimes.add(now)
         }
-        val gaps = times.zipWithNext { a, b -> b - a }
+        val gaps = pointerTimes.zipWithNext { a, b -> b - a }
         assertTrue("the clear is held for two steps", gaps[0] >= 0.5 - 1e-6)
         assertTrue(gaps.all { it >= 0.25 - 1e-6 })
+    }
+
+    // KAT keeps writing the current characters into the pointer's cells until the pointer changes. Sent together,
+    // the new characters landed in the previous cells for a frame ("yeah" became "yeあh"). So the pointer goes
+    // first, and the characters only once it has moved.
+    @Test fun charactersFollowTheirPointerAfterAPause() {
+        d.show(r("ja", "x", "a".repeat(40), "x"))
+        var lastPointerAt = Double.NaN
+        repeat(80) {
+            now = round((now + 0.05) * 10000) / 10000
+            d.tick()
+            val sent = take()
+            val pointer = sent.any { it.first.endsWith("KAT_Pointer") }
+            val chars = sent.any { "KAT_CharSync" in it.first }
+            assertFalse("pointer and characters in the same moment at $now", pointer && chars)
+            if (pointer) lastPointerAt = now
+            if (chars) assertTrue("characters ${now - lastPointerAt} s after the pointer", now - lastPointerAt >= 0.1 - 1e-6)
+        }
     }
 
     @Test fun longTextTurnsPagesAfterItIsWritten() {
