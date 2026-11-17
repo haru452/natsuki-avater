@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -76,8 +77,11 @@ class MainActivity : ComponentActivity() {
             StatusLine("自分の声", if (status.listening) "聞いています" else "止まっています")
             StatusLine("AI", if (status.localAI) "スマホの中（ローカル）" else "ローカル（Gemini はまだありません）")
             StatusLine("モデル", status.models.ifEmpty { "-" })
-            if (status.last.isNotEmpty()) Text(status.last, style = MaterialTheme.typography.bodyLarge)
             if (status.note.isNotEmpty()) Text(status.note, color = MaterialTheme.colorScheme.error)
+
+            // Other players' voices and your own voice are kept apart.
+            VoiceCard("相手の声", "", "", "（相手の声の翻訳は、次の段階で出るようになります）", big = true)
+            VoiceCard("自分の声", status.ownTranslation, status.ownOriginal, "（話すと、ここに出ます）", big = false)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("相手:")
@@ -120,6 +124,22 @@ class MainActivity : ComponentActivity() {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Text("中国語の訳はチャットに出ます（ペットの上には漢字を出せません）。", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.size(24.dp))
+        }
+    }
+
+    /** One speaker's latest line: the translation large, what was said small underneath. */
+    @Composable
+    private fun VoiceCard(title: String, translation: String, original: String, empty: String, big: Boolean) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                if (translation.isEmpty()) {
+                    Text(empty, style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Text(translation, style = if (big) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge)
+                    Text(original, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
     }
 

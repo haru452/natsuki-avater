@@ -163,6 +163,15 @@ class KatDisplayTests {
         assertFalse("chatbox only", got.any { "KAT" in it.first })
     }
 
+    @Test fun queuedAndDroppedAnswersAreReported() {
+        val events = ArrayList<String>()
+        val k = KatDisplay(::record, DisplayMode.KAT, 8, false, { now }, onEvent = { events.add(it) })
+        k.show(r("ja", "a", "first", "a"))
+        repeat(4) { k.show(r("ja", "b", "next $it", "b")) }
+        assertEquals(4, events.count { it.startsWith("表示を待ちます") })
+        assertEquals(1, events.count { it.startsWith("表示を飛ばしました") && "next 0" in it })
+    }
+
     @Test fun zhTargetGoesToChatboxEvenInKatMode() {
         val k = new(DisplayMode.KAT, true)
         k.targetIsChinese = true

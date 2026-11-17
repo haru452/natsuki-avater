@@ -229,6 +229,18 @@ class OwnVoicePipelineTests {
         assertEquals(0, t.calls.size)
     }
 
+    @Test fun everyDroppedUtteranceIsExplained() {
+        val (p, _) = make(stt = FakeStt(RecognizedSpeech(Lang.JA, "え", false), RecognizedSpeech(Lang.OTHER, "안녕", true)),
+            translator = FakeTranslator())
+        p.onOsc(ACTIVE, listOf(true))
+        speak(p)
+        speak(p)
+        drain(p)
+        assertEquals(2, said.count { it.startsWith("区切り") })
+        assertTrue(said.any { it.startsWith("出しません") && "え" in it })
+        assertTrue(said.any { it.startsWith("出しません") && "안녕" in it })
+    }
+
     @Test fun localAIUnknownMeansLocal() {
         val (p, _) = make()
         assertTrue(p.useLocalAI)

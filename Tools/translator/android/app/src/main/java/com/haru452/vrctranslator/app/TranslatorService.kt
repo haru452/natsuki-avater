@@ -33,6 +33,9 @@ data class Status(
     val localAI: Boolean = true,
     val last: String = "",
     val note: String = "",
+    /** Your latest sentence and its translation (the "自分の声" area). */
+    val ownOriginal: String = "",
+    val ownTranslation: String = "",
 )
 
 object TranslatorState {
@@ -46,12 +49,15 @@ object TranslatorState {
 }
 
 /** KatDisplay is not thread-safe; the pipeline and the ticker share it through this lock. */
-private class LockedDisplay(private val inner: Display) : Display {
+private class LockedDisplay(private val inner: Display, private val onShow: (TranslationResult) -> Unit) : Display {
     override var targetIsChinese: Boolean
         get() = synchronized(this) { inner.targetIsChinese }
         set(v) = synchronized(this) { inner.targetIsChinese = v }
     @Synchronized override fun thinking() = inner.thinking()
-    @Synchronized override fun show(r: TranslationResult) = inner.show(r)
+    @Synchronized override fun show(r: TranslationResult) {
+        inner.show(r)
+        onShow(r)
+    }
     @Synchronized override fun error() = inner.error()
     @Synchronized override fun clear() = inner.clear()
     @Synchronized override fun stop() = inner.stop()
@@ -100,8 +106,23 @@ class TranslatorService : Service() {
     }
 
     private fun note(text: String) {
-        Log.i(TAG, text)
+        event(text)
         TranslatorState.status.update { it.copy(note = text) }
+    }
+
+    private val eventTime = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+
+    /** Diagnostics that survive logcat's small buffer: files/events.log (read with adb run-as). */
+    @Synchronized
+    private fun event(text: String) {
+        Log.i(TAG, text)
+        try {
+            val f = File(filesDir, "events.log")
+            if (f.length() > 1_000_000) f.renameTo(File(filesDir, "events.old.log"))
+            f.appendText(LocalDateTime.now().format(eventTime) + "  " + text + "\n")
+        } catch (e: Exception) {
+            // diagnostics only
+        }
     }
 
     private fun clock() = SystemClock.elapsedRealtimeNanos() / 1e9
@@ -125,10 +146,13 @@ class TranslatorService : Service() {
             pipeline.onOsc(a, args)
             TranslatorState.status.update { it.copy(listening = pipeline.active, localAI = pipeline.useLocalAI) }
         })
-        val display = LockedDisplay(KatDisplay(relay::send, settings.display, settings.katSync, settings.showOriginal, ::clock))
+        val display = LockedDisplay(KatDisplay(relay::send, settings.display, settings.katSync, settings.showOriginal, ::clock,
+            onEvent = ::event)) { r ->
+            TranslatorState.status.update { it.copy(ownOriginal = r.original, ownTranslation = r.translation) }
+        }
         pipeline = OwnVoicePipeline(settings, stt, llm, display, kana,
             TranslationLog(File(filesDir, "vrc_translation_log.tsv")), ::clock, LocalDateTime::now) { msg ->
-            Log.i(TAG, msg)
+            event(msg)
             TranslatorState.status.update { it.copy(last = msg) }
         }
         pipeline.onStatus = ::note

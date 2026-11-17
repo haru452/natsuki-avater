@@ -103,7 +103,10 @@ class OwnVoicePipeline(
             if (!active) return
             segmenter.feed(frame)?.let { Recording(it, generation, clock()) }
         }
-        if (item != null) queue.put(item)
+        if (item != null) {
+            queue.put(item)
+            say("区切り: %.1f 秒".format(item.pcm.size / Segmenter.RATE.toDouble()))
+        }
     }
 
     /** Recognize and translate one queued utterance. False when there was nothing to do. */
@@ -132,6 +135,8 @@ class OwnVoicePipeline(
 
         val heard = stt.recognize(item.pcm)
         if (!heard.isSpeech || heard.lang !in listOf(Lang.JA, Lang.EN, Lang.ZH) || heard.text.isBlank()) {
+            val why = if (!heard.isSpeech) "話し声ではない" else "言語 ${heard.lang}"
+            say("出しません（$why）: ${heard.text}")
             ifCurrent(gen) { display.clear() }
             return
         }
@@ -153,6 +158,7 @@ class OwnVoicePipeline(
 
         val translation = TranslationPrompt.clean(raw)
         if (translation.isEmpty()) {
+            say("出しません（訳が空）: $raw")
             ifCurrent(gen) { display.clear() }
             return
         }

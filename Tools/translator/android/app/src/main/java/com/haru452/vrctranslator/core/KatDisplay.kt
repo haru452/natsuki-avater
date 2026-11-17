@@ -30,6 +30,8 @@ class KatDisplay(
     private val resendSeconds: Double = 3.0,
     private val stepSeconds: Double = 0.25,
     private val errorSeconds: Double = 3.0,
+    /** Diagnostics: when an answer has to wait for the one on screen, or is dropped. */
+    private val onEvent: (String) -> Unit = {},
 ) : Display {
     companion object {
         const val MAX_BACKLOG = 3
@@ -70,7 +72,8 @@ class KatDisplay(
             if (busy()) {
                 // Let the answer on screen finish and be read; this one follows it.
                 backlog.add(newPages)
-                while (backlog.size > MAX_BACKLOG) backlog.removeAt(0)
+                onEvent("表示を待ちます（前の訳を表示中。待ち ${backlog.size} 件）: ${r.translation}")
+                while (backlog.size > MAX_BACKLOG) onEvent("表示を飛ばしました（待ちが多すぎます）: " + backlog.removeAt(0).joinToString(""))
             } else {
                 start(newPages)
             }
