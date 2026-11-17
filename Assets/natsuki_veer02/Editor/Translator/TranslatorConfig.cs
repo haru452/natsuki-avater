@@ -51,11 +51,14 @@ public static class TranslatorConfig
     public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
     public const string PetSmileShape = "Smile";
     public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
-    /// <summary>The model waits twice as far out as the robot.</summary>
-    public static readonly Vector3 PetModelOffset = new Vector3(1.6f, 0f, 1.6f);
+    /// <summary>
+    /// The model walks some way behind on the wearer's path, so it is only snapped over (a teleport) when this far
+    /// from its spot; the robot's CatchUpDistance would snap it back and forth while the wearer runs.
+    /// </summary>
+    public const float ModelCatchUpDistance = 10f;
     /// <summary>Invisible points tracing the wearer's path; each creeps this fraction per frame toward the one ahead.</summary>
     public const int TrailLinks = 8;
-    public const float TrailWeight = 0.1f;
+    public const float TrailWeight = 0.2f;
     /// <summary>On while the model stands at its waiting spot (a contact, not synced).</summary>
     public const string ArrivedParam = "TranslatorPetArrived";
     public const float ArriveRadius = 0.3f;

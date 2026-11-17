@@ -96,10 +96,11 @@ public class TranslatorPetModelTests
         string still = $"{C.VelocityParam}Less{C.SleepStillSpeed}&{C.VoiceParam}Less{C.SleepVoiceLevel}";
         string back = $"{C.VelocityParam}Greater{C.SleepStillSpeed} | {{0}}:{C.VoiceParam}Greater{C.SleepVoiceLevel}";
         Assert.AreEqual("Idle", Layer(P.BodyLayerName).defaultState.name);
-        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Approach:{C.ArrivedParam}IfNot0 | Drowsy:{still}",
+        Assert.AreEqual($"Join:{C.VelocityParam}Greater{C.HopStartSpeed} | Approach:{C.ArrivedParam}IfNot0 | Drowsy:{still}",
             Transitions(State(P.BodyLayerName, "Idle")));
+        Assert.AreEqual($"Walk:@1 | Approach:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Join")));
         Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Walk")));
-        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Idle:{C.ArrivedParam}If0",
+        Assert.AreEqual($"Join:{C.VelocityParam}Greater{C.HopStartSpeed} | Idle:{C.ArrivedParam}If0",
             Transitions(State(P.BodyLayerName, "Approach")));
 
         var drowsy = State(P.BodyLayerName, "Drowsy");
@@ -202,11 +203,10 @@ public class TranslatorPetModelTests
     }
 
     [Test]
-    public void Prefab_WaitsTwiceAsFarAsTheRobot_AndKnowsWhenItArrived()
+    public void Prefab_WaitsWhereTheRobotDoes_AndKnowsWhenItArrived()
     {
-        Assert.AreEqual(C.PetOffset * 2f, C.PetModelOffset);
-        Assert.AreEqual(C.PetModelOffset, Find("Pet_Root/Pet_Heading/Pet_Target").localPosition);
-        Assert.AreEqual(C.PetModelOffset, Find("Pet_Root/Pet_Follow").localPosition);
+        Assert.AreEqual(C.PetOffset, Find("Pet_Root/Pet_Heading/Pet_Target").localPosition);
+        Assert.AreEqual(C.PetOffset, Find("Pet_Root/Pet_Follow").localPosition);
         var arrive = Find("Pet_Root/Pet_Heading/Pet_Target").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.ArrivedParam);
         Assert.AreEqual(C.ArriveRadius, arrive.radius);
         CollectionAssert.AreEqual(new[] { C.PetContactTag }, arrive.collisionTags);
@@ -217,6 +217,7 @@ public class TranslatorPetModelTests
         AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, type, "Sources.source" + source + ".Weight")).Evaluate(0f);
 
     [TestCase("Walk", 1000f, 1f, 0f, 0f)]
+    [TestCase("Join", 0f, 1f, 0f, 0f)]
     [TestCase("Approach", 0f, 0f, 1f, 0f)]
     [TestCase("Idle", 0f, 0f, 0f, 1f)]
     [TestCase("Bored", 0f, 0f, 0f, 1f)]
@@ -229,8 +230,32 @@ public class TranslatorPetModelTests
         Assert.AreEqual(spot, Weight(clip, hop, typeof(VRCAimConstraint), 1), "faces the waiting spot");
         Assert.AreEqual(wearer, Weight(clip, hop, typeof(VRCAimConstraint), 2), "faces the wearer");
         foreach (var axis in new[] { 0, 1, 2 })
-            Assert.AreEqual(C.PetModelOffset[axis], AnimationUtility.GetEditorCurve(clip,
+            Assert.AreEqual(C.PetOffset[axis], AnimationUtility.GetEditorCurve(clip,
                 EditorCurveBinding.FloatCurve(M.TargetPath, typeof(Transform), "m_LocalPosition." + "xyz"[axis])).Evaluate(0f), 1e-4f, "spot " + axis);
+    }
+
+    [Test]
+    public void Join_StepsOntoThePathGradually_ThenWalks()
+    {
+        // The trail's end sits at the wearer's feet while they stand: riding it at once would jump the pet there.
+        var join = State(P.BodyLayerName, "Join");
+        var curve = AnimationUtility.GetEditorCurve(Clip(join),
+            EditorCurveBinding.FloatCurve("Pet_Follow", typeof(VRCParentConstraint), "Sources.source2.Weight"));
+        float end = Clip(join).length;
+        Assert.AreEqual(0f, curve.Evaluate(0f));
+        Assert.Less(curve.Evaluate(end * 0.3f), 0.1f, "barely pulled at first");
+        Assert.GreaterOrEqual(curve.Evaluate(end), 1000f, "on the path at the end");
+        var toWalk = join.transitions.Single(t => t.destinationState.name == "Walk");
+        Assert.IsTrue(toWalk.hasExitTime);
+        foreach (var from in new[] { "Idle", "Approach" })
+            Assert.IsFalse(State(P.BodyLayerName, from).transitions.Any(t => t.destinationState.name == "Walk"), from + " goes through Join");
+    }
+
+    [Test]
+    public void Prefab_ModelIsNotSnappedBackWhileItWalksBehind()
+    {
+        var r = Find("Pet_Root/Pet_Heading/Pet_Target").GetComponents<VRCContactReceiver>().Single(c => c.parameter == C.NearParam);
+        Assert.AreEqual(C.ModelCatchUpDistance, r.radius);
     }
 
     [Test]

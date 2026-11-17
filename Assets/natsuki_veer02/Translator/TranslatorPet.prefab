@@ -59,7 +59,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 8989366949840263859}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -552,7 +552,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 1000098857567577396}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -693,7 +693,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 5493406703190854477}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -962,7 +962,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 53290618650586315}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -2953,7 +2953,7 @@ Transform:
   m_GameObject: {fileID: 3598954952858653297}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.6, y: 0, z: 1.6}
+  m_LocalPosition: {x: 0.8, y: 0, z: 0.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3311,7 +3311,7 @@ Transform:
   m_GameObject: {fileID: 3863079241503293656}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.6, y: 0, z: 1.6}
+  m_LocalPosition: {x: 0.8, y: 0, z: 0.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3331,7 +3331,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rootTransform: {fileID: 0}
   shapeType: 0
-  radius: 4
+  radius: 10
   height: 2
   position: {x: 0, y: 0, z: 0}
   rotation: {x: 0, y: 0, z: 0, w: 1}
@@ -3642,7 +3642,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 5711574437705345092}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -4472,7 +4472,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 1173185512828560592}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -4709,7 +4709,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 3959061306066460054}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
@@ -10923,7 +10923,7 @@ MonoBehaviour:
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 6262979631085464085}
-      Weight: 0.1
+      Weight: 0.2
       ParentPositionOffset: {x: 0, y: 0, z: 0}
       ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:

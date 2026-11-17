@@ -89,6 +89,23 @@ public static class TranslatorPetWalker
         Weight(clip, M.HopPath, typeof(VRCAimConstraint), 2, wearer, seconds);
     }
 
+    /// <summary>
+    /// Join: the trail's pull grows from nothing to full over the clip, so the pet walks from its spot onto the
+    /// wearer's path instead of jumping to the trail's end (at the wearer's feet while they stood).
+    /// </summary>
+    public static void RampTrail(AnimationClip clip, float seconds)
+    {
+        var curve = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(seconds * 0.3f, 0.03f),
+            new Keyframe(seconds * 0.6f, 0.15f), new Keyframe(seconds * 0.85f, 1f), new Keyframe(seconds, 1000f));
+        for (int i = 0; i < curve.length; i++)
+        {
+            AnimationUtility.SetKeyLeftTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+            AnimationUtility.SetKeyRightTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+        }
+        AnimationUtility.SetEditorCurve(clip,
+            EditorCurveBinding.FloatCurve(C.PetFollowName, typeof(VRCParentConstraint), "Sources.source2.Weight"), curve);
+    }
+
     static void Weight(AnimationClip clip, string path, System.Type type, int source, float value, float seconds) =>
         AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, type, "Sources.source" + source + ".Weight"),
             AnimationCurve.Constant(0f, seconds, value));

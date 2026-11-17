@@ -36,11 +36,10 @@ public static class TranslatorPrefabBuilder
             var pet = Child(root.transform, C.PetRootName, Vector3.zero);
             var heading = Child(pet.transform, C.PetHeadingName, Vector3.zero);
             TranslatorReactionsBuilder.AddHeading(heading, root.transform);
-            var offset = petModel == null ? C.PetOffset : C.PetModelOffset;
-            var target = Child(heading.transform, C.PetTargetName, offset);
-            var follow = Child(pet.transform, C.PetFollowName, offset);
+            var target = Child(heading.transform, C.PetTargetName, C.PetOffset);
+            var follow = Child(pet.transform, C.PetFollowName, C.PetOffset);
             AddFollowConstraints(pet, follow, target.transform);
-            AddCatchUpContact(target, follow);
+            AddCatchUpContact(target, follow, petModel == null ? C.CatchUpDistance : C.ModelCatchUpDistance);
             var hop = Child(follow.transform, C.PetHopName, Vector3.zero);
             var robot = petModel == null
                 ? TranslatorRobotBuilder.Build(hop.transform, outputDir)
@@ -111,11 +110,11 @@ public static class TranslatorPrefabBuilder
     /// Teleport detection: a Constant receiver on Pet_Target is on while the pet's sender is within
     /// CatchUpDistance. When it goes off, the toggle layer snaps the pet over. Only this avatar's own sender counts.
     /// </summary>
-    static void AddCatchUpContact(GameObject target, GameObject follow)
+    static void AddCatchUpContact(GameObject target, GameObject follow, float distance)
     {
         var r = target.AddComponent<VRCContactReceiver>();
         r.shapeType = ContactBase.ShapeType.Sphere;
-        r.radius = C.CatchUpDistance;
+        r.radius = distance;
         r.collisionTags = new List<string> { C.PetContactTag };
         r.allowSelf = true;
         r.allowOthers = false;
