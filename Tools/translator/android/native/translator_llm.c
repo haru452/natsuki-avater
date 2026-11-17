@@ -1,12 +1,14 @@
-// Minimal C API over llama.cpp for the translator app (P/Invoke from C#).
+// Minimal C API over llama.cpp for the translator app, with JNI entry points for app/NativeLlmJni.kt.
 // Built for arm64 with dotprod + i8mm (see build_android.sh); one model + one context per handle.
 // Greedy decoding; the whole prompt is evaluated each call (prompts are short).
 #include <stdatomic.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define LLAMA_DEPRECATED_SILENT
 #include "llama.h"
+#include <jni.h>
 
 typedef struct {
     struct llama_model *model;
@@ -27,7 +29,6 @@ void *tl_load(const char *path, int n_threads, int n_ctx) {
     }
     struct llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
-    mp.use_mmap = false;  // models live on /sdcard (FUSE): page faults there are very slow
     struct llama_model *model = llama_model_load_from_file(path, mp);
     if (!model) return NULL;
     struct llama_context_params cp = llama_context_default_params();
@@ -98,4 +99,43 @@ void tl_free(void *handle) {
     llama_free(h->ctx);
     llama_model_free(h->model);
     free(h);
+}
+
+// --- JNI (com.haru452.vrctranslator.app.NativeLlmJni, @JvmStatic) -------------------------------------
+// Text crosses as UTF-8 byte arrays: JNI's "modified UTF-8" strings mangle emoji and other 4-byte characters.
+
+JNIEXPORT jlong JNICALL Java_com_haru452_vrctranslator_app_NativeLlmJni_load(
+        JNIEnv *env, jclass cls, jstring path, jint threads, jint ctx) {
+    const char *p = (*env)->GetStringUTFChars(env, path, NULL);
+    void *h = tl_load(p, threads, ctx);
+    (*env)->ReleaseStringUTFChars(env, path, p);
+    return (jlong)(intptr_t)h;
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_haru452_vrctranslator_app_NativeLlmJni_complete(
+        JNIEnv *env, jclass cls, jlong handle, jbyteArray prompt, jint max_tokens) {
+    jsize n = (*env)->GetArrayLength(env, prompt);
+    char *text = malloc(n + 1);
+    (*env)->GetByteArrayRegion(env, prompt, 0, n, (jbyte *)text);
+    text[n] = 0;
+    const int cap = 8192;
+    char *out = malloc(cap);
+    int len = tl_complete((void *)(intptr_t)handle, text, max_tokens, out, cap);
+    free(text);
+    if (len < 0) {
+        free(out);
+        return NULL;
+    }
+    jbyteArray result = (*env)->NewByteArray(env, len);
+    (*env)->SetByteArrayRegion(env, result, 0, len, (const jbyte *)out);
+    free(out);
+    return result;
+}
+
+JNIEXPORT void JNICALL Java_com_haru452_vrctranslator_app_NativeLlmJni_cancel(JNIEnv *env, jclass cls, jlong handle) {
+    tl_cancel((void *)(intptr_t)handle);
+}
+
+JNIEXPORT void JNICALL Java_com_haru452_vrctranslator_app_NativeLlmJni_free(JNIEnv *env, jclass cls, jlong handle) {
+    tl_free((void *)(intptr_t)handle);
 }

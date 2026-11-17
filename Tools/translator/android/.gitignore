@@ -7,3 +7,4 @@ app/libs/*.aar
 *.gguf
 *.onnx
 *.apk
+app/src/main/jniLibs/
