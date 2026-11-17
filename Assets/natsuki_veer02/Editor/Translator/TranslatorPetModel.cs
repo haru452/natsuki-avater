@@ -99,14 +99,15 @@ public static class TranslatorPetModel
         controller.AddParameter(C.CloseParam, AnimatorControllerParameterType.Bool);
         var walkBody = Bake(Load(C.PetWalkClip), model, M.RobotPath);
         // Walk: toward the waiting spot (which turns with the wearer), facing it — its own direction of travel,
-        // even when the wearer walks backwards. Approach: the same once the wearer stops. Land: a jump onto the
+        // even when the wearer walks backwards. Approach: the same once the wearer stops. Land: a few more steps onto the
         // spot. Everything else holds the spot where it is (so walking up to the pet or looking around never moves
         // it) and faces the way the wearer faced; it sets off only once the wearer is no longer close.
         var idleClip = Body(Bake(Load(C.PetIdleClip), model, M.RobotPath), Pose.Wait, loop: true);
         var idle = State(sm, "Idle", 100, idleClip, outputDir);
         var walk = State(sm, "Walk", 200, Body(walkBody, Pose.Walk, loop: true), outputDir);
         var approach = State(sm, "Approach", 250, Body(Object.Instantiate(walkBody), Pose.Approach, loop: true), outputDir);
-        var land = State(sm, "Land", 270, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Land, loop: false), outputDir);
+        var landBody = Body(Object.Instantiate(walkBody), Pose.Land, loop: true);
+        var land = State(sm, "Land", 270, landBody, outputDir);
         var drowsy = State(sm, "Drowsy", 300, (AnimationClip)idle.motion, outputDir, save: false);
         var bored = State(sm, "Bored", 400, Body(Bake(Load(C.PetBoredClip), model, M.RobotPath), Pose.Wait, loop: true), outputDir);
         var wake = State(sm, "Wake", 500, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Wait, loop: false), outputDir);
@@ -123,7 +124,7 @@ public static class TranslatorPetModel
         Go(walk, approach, Turn).AddCondition(AnimatorConditionMode.Less, C.HopStopSpeed, C.VelocityParam);
         Go(approach, walk, Turn).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
         Go(approach, land, 0.1f).AddCondition(AnimatorConditionMode.If, 0f, C.ArrivedParam);
-        Go(land, idle, 0.2f, exitTime: 1f);
+        Go(land, idle, 0.2f, exitTime: C.LandSeconds / landBody.length);
 
         // Any movement or sound while drowsy starts the minute again.
         Go(drowsy, idle, 0f).AddCondition(AnimatorConditionMode.Greater, C.SleepStillSpeed, C.VelocityParam);
@@ -168,9 +169,10 @@ public static class TranslatorPetModel
         float end = Mathf.Max(clip.length, 1f / Fps);
         M.SetHeadingWeight(clip, pose == Pose.Walk ? C.PetModelHeadingWeight : 0f, end);
         M.SetTarget(clip, AnimationCurve.Constant(0f, end, C.PetOffset.z), end);
-        bool going = pose is Pose.Walk or Pose.Approach;
+        bool going = pose is Pose.Walk or Pose.Approach or Pose.Land;
+        bool spotFollows = pose is Pose.Walk or Pose.Approach;
         TranslatorPetWalker.SetBody(clip, end, spot: going ? 1f : 0f, ahead: going ? 0f : 1f,
-            spotFollows: going ? 1000f : 0f, pull: pose == Pose.Land ? C.LandPull : 0f);
+            spotFollows: spotFollows ? 1000f : 0f, pull: pose == Pose.Land ? C.LandPull : 0f);
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
         settings.loopTime = loop;
         AnimationUtility.SetAnimationClipSettings(clip, settings);
@@ -245,48 +247,5 @@ public static class TranslatorPetModel
             keys[i] = new Keyframe(t[i], v[i], slope, slope);
         }
         return new AnimationCurve(keys);
-    }
-
-    /// <summary>
-    /// In the Pat layer (which owns the smile): when the wearer looks at her, a quick smile (Glance), then Seen
-    /// until they look away, so each look gets one smile. Petting still wins.
-    /// </summary>
-    public static void AddGlance(AnimatorStateMachine pat, string outputDir)
-    {
-        var states = pat.states.Select(s => s.state).ToArray();
-        var calm = states.Single(s => s.name == "Calm");
-        var hearts = states.Single(s => s.name == "Hearts");
-        const float end = 1.3f;
-
-        var glanceClip = Object.Instantiate((AnimationClip)calm.motion);
-        var smile = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(0.15f, 100f), new Keyframe(0.85f, 100f), new Keyframe(end, 0f));
-        foreach (var mesh in C.PetSmileMeshes)
-            AnimationUtility.SetEditorCurve(glanceClip,
-                EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + C.PetSmileShape), smile);
-        AnimationUtility.SetEditorCurve(glanceClip, EditorCurveBinding.FloatCurve(M.HeartsPath, typeof(ParticleSystem), "EmissionModule.enabled"),
-            AnimationCurve.Constant(0f, end, 0f));
-
-        var glance = pat.AddState("Glance", new Vector3(550, 100));
-        glance.motion = TranslatorAnimationBuilder.SaveClip(glanceClip, outputDir + "/Translator_Glance.anim");
-        glance.writeDefaultValues = false;
-        var seen = pat.AddState("Seen", new Vector3(550, 200));
-        seen.motion = calm.motion;
-        seen.writeDefaultValues = false;
-
-        Go(calm, glance, 0f).AddCondition(AnimatorConditionMode.If, 0f, C.LookedParam);
-        foreach (var s in new[] { glance, seen })
-            Go(s, hearts, 0f).AddCondition(AnimatorConditionMode.If, 0f, C.PatParam);
-        Go(glance, seen, 0f, exitTime: 1f);
-        Go(seen, calm, 0f).AddCondition(AnimatorConditionMode.IfNot, 0f, C.LookedParam);
-    }
-
-    /// <summary>Smile while petted, neutral otherwise (on every face mesh that may carry the shape).</summary>
-    public static void AddSmile(AnimationClip clip, float weight, float seconds)
-    {
-        foreach (var mesh in C.PetSmileMeshes)
-            AnimationUtility.SetEditorCurve(clip,
-                EditorCurveBinding.FloatCurve(C.PetFollowName + "/" + C.PetHopName + "/" + C.RobotName + "/" + mesh,
-                    typeof(SkinnedMeshRenderer), "blendShape." + C.PetSmileShape),
-                AnimationCurve.Constant(0f, seconds, weight));
     }
 }

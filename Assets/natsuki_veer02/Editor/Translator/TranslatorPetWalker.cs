@@ -10,9 +10,9 @@ using M = TranslatorMotionBuilder;
 
 /// <summary>
 /// How a humanoid pet walks: once the wearer is away from it, straight toward its waiting spot (front right of the
-/// wearer), facing the way it goes, jumping the last bit; there it faces the way the wearer faced (the Look layer
+/// wearer), facing the way it goes, walking the last bit in; there it faces the way the wearer faced (the Look layer
 /// turns it to the wearer while they look at it). While it waits the spot stays put, so the wearer can walk up to
-/// it or look around. Plus blinking.
+/// it or look around. (Eyes: TranslatorPetEyes.)
 /// </summary>
 public static class TranslatorPetWalker
 {
@@ -105,33 +105,6 @@ public static class TranslatorPetWalker
     static void Weight(AnimationClip clip, string path, System.Type type, int source, float value, float seconds) =>
         AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, type, "Sources.source" + source + ".Weight"),
             AnimationCurve.Constant(0f, seconds, value));
-
-    /// <summary>One looping state: eyes open, then shut and open again quickly at the end of every BlinkSeconds.</summary>
-    public static void AddBlinkLayer(AnimatorStateMachine sm, string outputDir)
-    {
-        float t = C.BlinkSeconds;
-        var clip = new AnimationClip();
-        foreach (var (mesh, shape) in C.PetBlinkShapes)
-        {
-            var curve = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(t - 0.16f, 0f), new Keyframe(t - 0.09f, 100f),
-                new Keyframe(t - 0.02f, 0f), new Keyframe(t, 0f));
-            for (int i = 0; i < curve.length; i++)
-            {
-                AnimationUtility.SetKeyLeftTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
-                AnimationUtility.SetKeyRightTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
-            }
-            AnimationUtility.SetEditorCurve(clip,
-                EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + shape), curve);
-        }
-        var settings = AnimationUtility.GetAnimationClipSettings(clip);
-        settings.loopTime = true;
-        AnimationUtility.SetAnimationClipSettings(clip, settings);
-
-        var s = sm.AddState("Blink", new Vector3(300, 100));
-        s.motion = TranslatorAnimationBuilder.SaveClip(clip, outputDir + "/Translator_PetBlink.anim");
-        s.writeDefaultValues = false;
-        sm.defaultState = s;
-    }
 
     /// <summary>The eyelid curves the blink layer owns, so baked motions leave them alone.</summary>
     public static bool IsBlinkCurve(EditorCurveBinding b)

@@ -138,6 +138,7 @@ public class TranslatorPrefabTests
         Assert.AreEqual(ContactReceiver.ReceiverType.Constant, r.receiverType);
         Assert.AreEqual(C.NearParam, r.parameter);
         Assert.AreEqual(C.CatchUpDistance, r.radius);
+        Assert.GreaterOrEqual(r.radius, 8f, "only snaps over once well behind (it used to at 4 m)");
         CollectionAssert.AreEqual(new[] { C.PetContactTag }, r.collisionTags);
         Assert.IsTrue(r.allowSelf);
         Assert.IsFalse(r.allowOthers, "other players cannot trigger it");

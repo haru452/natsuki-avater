@@ -51,11 +51,12 @@ public static class TranslatorConfig
     public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
     public const string PetSmileShape = "Smile";
     public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
-    /// <summary>On while the model is near its waiting spot (a contact, not synced); then it jumps the rest.</summary>
+    /// <summary>On while the model is near its waiting spot (a contact, not synced); then it walks the rest in.</summary>
     public const string ArrivedParam = "TranslatorPetArrived";
     public const float ArriveRadius = 0.5f;
-    /// <summary>Extra pull toward the spot while jumping in (per frame, against the pet's own pose).</summary>
+    /// <summary>Extra pull toward the spot while walking in (per frame, against the pet's own pose), for LandSeconds.</summary>
     public const float LandPull = 0.15f;
+    public const float LandSeconds = 0.5f;
     /// <summary>
     /// On while the wearer is within CloseRadius of the model (a contact): it waits where it is, so walking up to
     /// it does not push it away; once the wearer is farther, it goes to its spot.
@@ -99,7 +100,7 @@ public static class TranslatorConfig
     public const string FollowWeightProperty = "Sources.source1.Weight";
 
     // Teleport: a contact on Pet_Target notices when the pet is this far behind, and the pet snaps over.
-    public const float CatchUpDistance = 4f;
+    public const float CatchUpDistance = 8f;
     public const string NearParam = "TranslatorPetNear";
     public const string PetContactTag = "TranslatorPetHome";
     public const float PetSenderRadius = 0.05f;

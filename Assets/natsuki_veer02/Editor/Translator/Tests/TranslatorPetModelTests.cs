@@ -104,7 +104,11 @@ public class TranslatorPetModelTests
         // Near the spot it jumps the last bit instead of sliding in.
         Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Land:{C.ArrivedParam}If0",
             Transitions(State(P.BodyLayerName, "Approach")));
-        Assert.AreEqual("Idle:@1", Transitions(State(P.BodyLayerName, "Land")));
+        var land = State(P.BodyLayerName, "Land");
+        Assert.AreEqual("Idle", land.transitions.Single().destinationState.name);
+        Assert.AreEqual(C.LandSeconds, land.transitions.Single().exitTime * Clip(land).length, 0.02f, "a few steps, not a jump");
+        Assert.IsTrue(AnimationUtility.GetCurveBindings(Clip(land)).Select(b => b.path).SequenceEqual(
+            AnimationUtility.GetCurveBindings(Clip(State(P.BodyLayerName, "Walk"))).Select(b => b.path)), "the walk motion");
 
         var drowsy = State(P.BodyLayerName, "Drowsy");
         var toBored = drowsy.transitions.Single(t => t.destinationState.name == "Bored");
@@ -137,33 +141,52 @@ public class TranslatorPetModelTests
         Assert.AreEqual(0f, Heading("Idle"));
     }
 
+    // The eye layer owns every eye shape, so the smile can close the eyes (the lashes' smile alone sat over open
+    // eyes and looked like eyebrows) without the blink fighting it.
+    static readonly string Lash = M.RobotPath + "/EyeLash";
+
+    float Shape(AnimationClip clip, string mesh, string shape, float t) => AnimationUtility.GetEditorCurve(clip,
+        EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + shape)).Evaluate(t);
+
+    float Highlight(AnimationClip clip, float t) => AnimationUtility.GetEditorCurve(clip,
+        EditorCurveBinding.FloatCurve(M.RobotPath + "/EyeLight", typeof(SkinnedMeshRenderer), "m_Enabled")).Evaluate(t);
+
     [Test]
-    public void Look_SmilesForAMoment_OncePerLook()
+    public void Look_SmilesForAMoment_EyesClosed_OncePerLook()
     {
-        var face = RobotPath.Substring("Pet_Root/".Length) + "/EyeLash";
-        var glance = State(M.PatLayerName, "Glance");
-        var smile = AnimationUtility.GetEditorCurve(Clip(glance), EditorCurveBinding.FloatCurve(face, typeof(SkinnedMeshRenderer), "blendShape.Smile"));
-        float end = Clip(glance).length;
-        Assert.AreEqual(0f, smile.Evaluate(0f));
-        Assert.AreEqual(100f, smile.Evaluate(end * 0.4f), 1f, "smiles");
-        Assert.AreEqual(0f, smile.Evaluate(end), "and stops");
+        var eyes = TranslatorPetWalker.BlinkLayerName;
+        var glance = State(eyes, "Glance");
+        var clip = Clip(glance);
+        float end = clip.length, mid = end * 0.4f;
+        Assert.AreEqual(0f, Shape(clip, "EyeLash", "Smile", 0f));
+        Assert.AreEqual(100f, Shape(clip, "EyeLash", "Smile", mid), 1f, "smiles");
+        Assert.AreEqual(100f, Shape(clip, "Face", "EyeClose", mid), 1f, "eyes closed under the smile");
+        Assert.AreEqual(100f, Shape(clip, "Eye", "EyeClose", mid), 1f);
+        Assert.AreEqual(0f, Highlight(clip, mid), "no highlights floating on closed eyes");
+        Assert.AreEqual(0f, Shape(clip, "EyeLash", "Smile", end), "and stops");
+        Assert.AreEqual(1f, Highlight(clip, end));
         Assert.LessOrEqual(end, 2f, "just a moment");
-        Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(Clip(glance)).loopTime);
-        // Calm -> Glance when looked at; Glance -> Seen; Seen waits until the wearer looks away.
-        StringAssert.StartsWith($"Hearts:{C.PatParam}If0 | Glance:{C.LookedParam}If0", Transitions(State(M.PatLayerName, "Calm")));
-        Assert.AreEqual($"Hearts:{C.PatParam}If0 | Seen:@1", Transitions(glance));
-        Assert.AreEqual($"Hearts:{C.PatParam}If0 | Calm:{C.LookedParam}IfNot0", Transitions(State(M.PatLayerName, "Seen")));
-        var hearts = EditorCurveBinding.FloatCurve("Pet_Follow/" + C.HeartsName, typeof(ParticleSystem), "EmissionModule.enabled");
-        Assert.AreEqual(0f, AnimationUtility.GetEditorCurve(Clip(glance), hearts).Evaluate(0f), "no hearts");
+        Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
+        StringAssert.StartsWith($"Happy:{C.PatParam}If0 | Glance:{C.LookedParam}If0", Transitions(State(eyes, "Blink")));
+        Assert.AreEqual($"Happy:{C.PatParam}If0 | Seen:@1", Transitions(glance));
+        Assert.AreEqual($"Happy:{C.PatParam}If0 | Blink:{C.LookedParam}IfNot0", Transitions(State(eyes, "Seen")));
     }
 
     [Test]
-    public void Pat_SmilesWithHearts()
+    public void Pat_SmilesWithEyesClosed_AndHearts()
     {
-        float Smile(string state) => AnimationUtility.GetEditorCurve(Clip(State(M.PatLayerName, state)),
-            EditorCurveBinding.FloatCurve(RobotPath.Substring("Pet_Root/".Length) + "/EyeLash", typeof(SkinnedMeshRenderer), "blendShape.Smile")).Evaluate(0f);
-        Assert.AreEqual(100f, Smile("Hearts"));
-        Assert.AreEqual(0f, Smile("Calm"));
+        var happy = Clip(State(TranslatorPetWalker.BlinkLayerName, "Happy"));
+        Assert.AreEqual(100f, Shape(happy, "EyeLash", "Smile", 0f));
+        Assert.AreEqual(100f, Shape(happy, "Face", "EyeClose", 0f));
+        Assert.AreEqual(100f, Shape(happy, "Eye", "EyeClose", 0f));
+        Assert.AreEqual(0f, Shape(happy, "EyeLash", "Blink", 0f));
+        Assert.AreEqual(0f, Highlight(happy, 0f));
+        StringAssert.StartsWith("Blink:" + C.PatParam + "IfNot0", Transitions(State(TranslatorPetWalker.BlinkLayerName, "Happy")));
+        var blink = Clip(State(TranslatorPetWalker.BlinkLayerName, "Blink"));
+        Assert.AreEqual(0f, Shape(blink, "EyeLash", "Smile", 0f));
+        Assert.AreEqual(1f, Highlight(blink, 0f));
+        // The pat layer keeps only the hearts.
+        Assert.IsFalse(AnimationUtility.GetCurveBindings(Clip(State(M.PatLayerName, "Hearts"))).Any(b => b.propertyName.StartsWith("blendShape.")));
     }
 
     [Test]
@@ -240,7 +263,7 @@ public class TranslatorPetModelTests
 
     [TestCase("Walk", 1f, 0f, 1000f, 0f)]
     [TestCase("Approach", 1f, 0f, 1000f, 0f)]
-    [TestCase("Land", 0f, 1f, 0f, 0.15f)]
+    [TestCase("Land", 1f, 0f, 0f, 0.15f)]
     [TestCase("Idle", 0f, 1f, 0f, 0f)]
     [TestCase("Bored", 0f, 1f, 0f, 0f)]
     public void Body_GoesToItsSpotFacingIt_WaitsFacingTheWayTheWearerFaced(string state, float spot, float ahead, float spotFollows, float pull)

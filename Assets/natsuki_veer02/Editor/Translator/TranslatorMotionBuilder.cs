@@ -42,16 +42,9 @@ public static class TranslatorMotionBuilder
             C.LookedParam, C.LookTurnSeconds, holdSeconds: 0f);
         var calm = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame);
         var hearts = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds);
-        if (petModel != null)
-        {
-            TranslatorPetModel.AddSmile(calm, 0f, Frame);
-            TranslatorPetModel.AddSmile(hearts, 100f, C.HeartsMinSeconds);
-        }
         BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
-        if (petModel != null)
-            TranslatorPetModel.AddGlance(System.Array.Find(controller.layers, l => l.name == PatLayerName).stateMachine, outputDir);
-        if (petModel != null) TranslatorPetWalker.AddBlinkLayer(NewLayer(controller, TranslatorPetWalker.BlinkLayerName), outputDir);
+        if (petModel != null) TranslatorPetEyes.AddLayer(NewLayer(controller, TranslatorPetWalker.BlinkLayerName), outputDir);
         if (petModel == null)
             TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
 
