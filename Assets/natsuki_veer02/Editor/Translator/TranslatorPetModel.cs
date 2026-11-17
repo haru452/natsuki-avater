@@ -145,7 +145,7 @@ public static class TranslatorPetModel
         var clip = Bake(source, model, M.RobotPath);
         float end = Mathf.Max(clip.length, 1f / Fps);
         M.SetHeadingWeight(clip, moving ? C.MovingHeadingWeight : 0f, end);
-        M.Set(clip, M.TargetPath, "m_LocalPosition.z", AnimationCurve.Constant(0f, end, 0f));
+        M.SetTarget(clip, AnimationCurve.Constant(0f, end, C.PetOffset.z), end);
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
         settings.loopTime = loop;
         AnimationUtility.SetAnimationClipSettings(clip, settings);

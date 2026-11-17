@@ -99,12 +99,22 @@ public class TranslatorMotionTests
         var clip = (AnimationClip)idle.motion;
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
         Assert.AreEqual(C.WanderSeconds, clip.length, 1e-3f);
+        // The animator writes a Transform's whole position: an axis the clip leaves out becomes 0, which put
+        // the pet inside the wearer's feet. Every state must keep the waiting spot at PetOffset on all axes.
         var z = Curve(idle, M.TargetPath, typeof(Transform), "m_LocalPosition.z");
-        Assert.AreEqual(0f, z.Evaluate(0f), 1e-4f, "starts where walking left it");
-        Assert.AreEqual(C.WanderDistance, z.Evaluate(C.WanderSeconds / 4), 1e-3f, "a little forward");
-        Assert.AreEqual(-C.WanderDistance, z.Evaluate(C.WanderSeconds * 3 / 4), 1e-3f, "a little back");
-        Assert.AreEqual(0f, Curve(State(M.HopLayerName, "Hop"), M.TargetPath, typeof(Transform), "m_LocalPosition.z").Evaluate(0f),
+        Assert.AreEqual(C.PetOffset.z, z.Evaluate(0f), 1e-4f, "starts where walking left it");
+        Assert.AreEqual(C.PetOffset.z + C.WanderDistance, z.Evaluate(C.WanderSeconds / 4), 1e-3f, "a little forward");
+        Assert.AreEqual(C.PetOffset.z - C.WanderDistance, z.Evaluate(C.WanderSeconds * 3 / 4), 1e-3f, "a little back");
+        var hop = State(M.HopLayerName, "Hop");
+        Assert.AreEqual(C.PetOffset.z, Curve(hop, M.TargetPath, typeof(Transform), "m_LocalPosition.z").Evaluate(0f),
             "no ambling while walking");
+        foreach (var s in new[] { idle, hop })
+        {
+            Assert.AreEqual(C.PetOffset.x, Curve(s, M.TargetPath, typeof(Transform), "m_LocalPosition.x").Evaluate(0f), 1e-4f, s.name + " keeps the spot at the side");
+            Assert.AreEqual(C.PetOffset.y, Curve(s, M.TargetPath, typeof(Transform), "m_LocalPosition.y").Evaluate(0f), 1e-4f, s.name);
+            Assert.AreEqual(0f, Hop(s, "m_LocalPosition.x").Evaluate(0f), 1e-4f, s.name + " hop x");
+            Assert.AreEqual(0f, Hop(s, "m_LocalPosition.z").Evaluate(0f), 1e-4f, s.name + " hop z");
+        }
     }
 
     [Test]

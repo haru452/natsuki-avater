@@ -26,18 +26,18 @@ public class TranslatorFollowPlayTests
         root.gameObject.SetActive(true); // what the toggle's On state does
 
         for (int i = 0; i < 10; i++) yield return null;
-        Assert.AreEqual(0.5f, follow.position.x, 0.01f, "waits at the right while standing still");
+        Assert.AreEqual(0.8f, follow.position.x, 0.01f, "waits at the front right while standing still");
 
         avatar.transform.position = new Vector3(0, 0, 3); // walk 3 m forward
         yield return null;
         yield return null;
-        float lag = 3f - follow.position.z;
+        float lag = 3.8f - follow.position.z;
         Assert.Greater(lag, 2f, "trails behind right after moving");
         Assert.Less(lag, 3f, "but has started to follow");
 
         for (int i = 0; i < 300; i++) yield return null;
-        Assert.AreEqual(3f, follow.position.z, 0.02f, "catches up");
-        Assert.AreEqual(0.5f, follow.position.x, 0.02f, "and settles at the right");
+        Assert.AreEqual(3.8f, follow.position.z, 0.02f, "catches up");
+        Assert.AreEqual(0.8f, follow.position.x, 0.02f, "and settles at the front right");
     }
 
     [UnityTest]
@@ -63,7 +63,7 @@ public class TranslatorFollowPlayTests
         Assert.Greater(Quaternion.Angle(follow.rotation, avatar.transform.rotation), 45f, "turns late");
         for (int i = 0; i < 300; i++) yield return null;
         Assert.Less(Quaternion.Angle(follow.rotation, avatar.transform.rotation), 1f, "ends facing the same way");
-        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.5f, 0, 0)), 0.02f, "still at the right");
+        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.8f, 0, 0.8f)), 0.02f, "still at the right");
     }
 
     [UnityTest]
@@ -96,7 +96,7 @@ public class TranslatorFollowPlayTests
         avatar.transform.position = new Vector3(30, 0, 0); // standing still, so only position changes
         yield return null;
         yield return null;
-        Assert.AreEqual(30.5f, target.position.x, 0.01f, "the waiting spot moves with the wearer even when standing");
+        Assert.AreEqual(30.8f, target.position.x, 0.01f, "the waiting spot moves with the wearer even when standing");
     }
 
     [Test]

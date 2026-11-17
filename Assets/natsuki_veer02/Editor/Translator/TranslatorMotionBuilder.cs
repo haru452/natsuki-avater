@@ -131,14 +131,15 @@ public static class TranslatorMotionBuilder
     {
         float w = C.WanderSeconds, d = C.WanderDistance;
         var clip = new AnimationClip();
-        Set(clip, HopPath, "m_LocalPosition.y", AnimationCurve.Constant(0f, w, 0f));
+        SetHopFlat(clip, AnimationCurve.Constant(0f, w, 0f), w);
         foreach (var axis in new[] { "x", "y", "z" })
             Set(clip, HopPath, "m_LocalScale." + axis, AnimationCurve.Constant(0f, w, 1f));
         SetHeadingWeight(clip, 0f, w);
+        float z0 = C.PetOffset.z;
         var wander = new AnimationCurve(
-            new Keyframe(0f, 0f), new Keyframe(w / 4, d), new Keyframe(w / 2, 0f), new Keyframe(w * 3 / 4, -d), new Keyframe(w, 0f));
+            new Keyframe(0f, z0), new Keyframe(w / 4, z0 + d), new Keyframe(w / 2, z0), new Keyframe(w * 3 / 4, z0 - d), new Keyframe(w, z0));
         for (int i = 0; i < wander.length; i++) wander.SmoothTangents(i, 0f);
-        Set(clip, TargetPath, "m_LocalPosition.z", wander);
+        SetTarget(clip, wander, w);
         Loop(clip);
         return clip;
     }
@@ -151,10 +152,10 @@ public static class TranslatorMotionBuilder
 
         // Height follows a parabola: launch fast, slow at the top, fall fast.
         float launch = 4f * C.HopHeight / t;
-        Set(clip, HopPath, "m_LocalPosition.y", new AnimationCurve(
+        SetHopFlat(clip, new AnimationCurve(
             new Keyframe(0f, 0f, launch, launch),
             new Keyframe(t / 2, C.HopHeight, 0f, 0f),
-            new Keyframe(t, 0f, -launch, -launch)));
+            new Keyframe(t, 0f, -launch, -launch)), t);
 
         for (int i = 0; i < 3; i++)
         {
@@ -169,9 +170,28 @@ public static class TranslatorMotionBuilder
 
         // While walking, the waiting spot turns with the wearer and stops ambling.
         SetHeadingWeight(clip, C.MovingHeadingWeight, t);
-        Set(clip, TargetPath, "m_LocalPosition.z", AnimationCurve.Constant(0f, t, 0f));
+        SetTarget(clip, AnimationCurve.Constant(0f, t, C.PetOffset.z), t);
         Loop(clip);
         return clip;
+    }
+
+    /// <summary>
+    /// The animator writes a Transform's whole position, and an axis a clip leaves out becomes 0 — that put the pet
+    /// inside the wearer's feet. So the waiting spot always gets all three axes: PetOffset, with z given.
+    /// </summary>
+    internal static void SetTarget(AnimationClip clip, AnimationCurve z, float seconds)
+    {
+        Set(clip, TargetPath, "m_LocalPosition.x", AnimationCurve.Constant(0f, seconds, C.PetOffset.x));
+        Set(clip, TargetPath, "m_LocalPosition.y", AnimationCurve.Constant(0f, seconds, C.PetOffset.y));
+        Set(clip, TargetPath, "m_LocalPosition.z", z);
+    }
+
+    /// <summary>The hop's height, with x and z held at 0 for the same reason.</summary>
+    static void SetHopFlat(AnimationClip clip, AnimationCurve y, float seconds)
+    {
+        Set(clip, HopPath, "m_LocalPosition.x", AnimationCurve.Constant(0f, seconds, 0f));
+        Set(clip, HopPath, "m_LocalPosition.y", y);
+        Set(clip, HopPath, "m_LocalPosition.z", AnimationCurve.Constant(0f, seconds, 0f));
     }
 
     internal static void SetHeadingWeight(AnimationClip clip, float weight, float seconds) =>
