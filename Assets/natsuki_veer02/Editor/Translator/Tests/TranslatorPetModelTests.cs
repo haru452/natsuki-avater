@@ -165,7 +165,9 @@ public class TranslatorPetModelTests
         Assert.AreEqual(0f, Highlight(clip, mid), "no highlights floating on closed eyes");
         Assert.AreEqual(0f, Shape(clip, "EyeLash", "Smile", end), "and stops");
         Assert.AreEqual(1f, Highlight(clip, end));
-        Assert.LessOrEqual(end, 2f, "just a moment");
+        Assert.GreaterOrEqual(end, 2.4f, "long enough to notice");
+        Assert.LessOrEqual(end, 3f, "but not a fixed grin");
+        Assert.AreEqual(100f, Shape(clip, "EyeLash", "Smile", end - 0.5f), 1f, "still smiling near the end");
         Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
         StringAssert.StartsWith($"Happy:{C.PatParam}If0 | Glance:{C.LookedParam}If0", Transitions(State(eyes, "Blink")));
         Assert.AreEqual($"Happy:{C.PatParam}If0 | Seen:@1", Transitions(glance));

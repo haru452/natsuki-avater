@@ -13,7 +13,7 @@ using M = TranslatorMotionBuilder;
 public static class TranslatorPetEyes
 {
     const string LashMesh = "EyeLash", HighlightMesh = "EyeLight";
-    const float GlanceSeconds = 1.3f;
+    const float GlanceSeconds = 2.5f;
 
     public static void AddLayer(AnimatorStateMachine sm, string outputDir)
     {
@@ -21,7 +21,7 @@ public static class TranslatorPetEyes
         var blink = State(sm, "Blink", 100, blinkClip, outputDir + "/Translator_PetBlink.anim");
         var happy = State(sm, "Happy", 200, Smile(AnimationCurve.Constant(0f, C.HeartsMinSeconds, 100f), C.HeartsMinSeconds),
             outputDir + "/Translator_PetHappy.anim");
-        var smile = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(0.15f, 100f), new Keyframe(0.85f, 100f), new Keyframe(GlanceSeconds, 0f));
+        var smile = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(0.15f, 100f), new Keyframe(GlanceSeconds - 0.45f, 100f), new Keyframe(GlanceSeconds, 0f));
         var glance = State(sm, "Glance", 300, Smile(smile, GlanceSeconds), outputDir + "/Translator_PetGlance.anim");
         var seen = sm.AddState("Seen", new Vector3(550, 300));
         seen.motion = blink.motion;
