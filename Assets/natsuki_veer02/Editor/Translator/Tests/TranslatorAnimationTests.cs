@@ -47,13 +47,21 @@ public class TranslatorAnimationTests
     public void Toggle_ClipsDriveBothRoots()
     {
         var c = TranslatorAnimationBuilder.BuildToggleController(Dir);
-        foreach (var path in new[] { C.PetRootName, C.SignRootName, C.GazeName })
+        foreach (var path in new[] { C.PetRootName, C.GazeName })
         {
             Assert.AreEqual(1f, ActiveValue(State(c, "On"), path), path);
             Assert.AreEqual(1f, ActiveValue(State(c, "Appear"), path), path);
             Assert.AreEqual(1f, ActiveValue(State(c, "CatchUp"), path), path);
             Assert.AreEqual(0f, ActiveValue(State(c, "Off"), path), path);
         }
+    }
+
+    [Test]
+    public void Toggle_SignStaysHiddenForNow()
+    {
+        var c = TranslatorAnimationBuilder.BuildToggleController(Dir);
+        foreach (var state in new[] { "On", "Appear", "CatchUp", "Off" })
+            Assert.AreEqual(0f, ActiveValue(State(c, state), C.SignRootName), state + ": the wearer asked not to show the sign for now");
     }
 
     [Test]

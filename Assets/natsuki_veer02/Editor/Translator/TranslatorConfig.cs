@@ -105,6 +105,8 @@ public static class TranslatorConfig
     public const float SignWidth = 0.8f;
     public const int SignTextureWidth = 1024;
     public const int SignTextureHeight = 128;
+    /// <summary>The wearer asked to hide the "I'm using a translator" sign for now. Set true to bring it back.</summary>
+    public const bool ShowSign = false;
     public static readonly string[] SignLines =
     {
         "Since I can't speak your language,",

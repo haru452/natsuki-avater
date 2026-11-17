@@ -111,9 +111,12 @@ public static class TranslatorAnimationBuilder
     {
         var clip = new AnimationClip();
         foreach (var path in new[] { TranslatorConfig.PetRootName, TranslatorConfig.SignRootName, TranslatorConfig.GazeName })
+        {
+            float value = path == TranslatorConfig.SignRootName && !TranslatorConfig.ShowSign ? 0f : active;
             AnimationUtility.SetEditorCurve(clip,
                 EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive"),
-                AnimationCurve.Constant(0f, seconds, active));
+                AnimationCurve.Constant(0f, seconds, value));
+        }
         if (followWeight.HasValue)
             AnimationUtility.SetEditorCurve(clip,
                 EditorCurveBinding.FloatCurve(TranslatorConfig.PetRootName + "/" + TranslatorConfig.PetFollowName,
