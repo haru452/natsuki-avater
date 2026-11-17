@@ -87,7 +87,7 @@ public class KatDisplay : IDisplay
         dotsOnKat = false;
         if (katMode && !chatOnly)
         {
-            var newPages = Compose.Paginate(Compose.Kat(r, showOriginal));
+            var newPages = Compose.KatPages(Compose.Kat(r, showOriginal));
             if (Busy())
             {
                 backlog.Add(newPages);

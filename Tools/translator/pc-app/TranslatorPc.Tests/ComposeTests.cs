@@ -70,4 +70,37 @@ public class ComposeTests
         Assert.Equal(2, pages.Count);
         Assert.StartsWith("ガ", pages[1]);
     }
+
+    // Rows on the pet are 32 cells: a word that does not fit starts the next row ("I di / d it!" before).
+    static List<string> Rows(string page) =>
+        Enumerable.Range(0, (Kat.Cells(page) + Compose.Row - 1) / Compose.Row).Select(r => string.Concat(
+            Kat.Chars(page).Skip(r * Compose.Row).Take(Compose.Row))).ToList();
+
+    [Fact]
+    public void WordsAreNotSplitAcrossRows()
+    {
+        var pages = Compose.KatPages("Let's show them, \"I did it! I did it!\" This is a longer one.");
+        Assert.Single(pages);
+        var rows = Rows(pages[0]);
+        Assert.Equal("Let's show them, \"I did it! I", rows[0].TrimEnd());
+        Assert.Equal("did it!\" This is a longer one.", rows[1].TrimEnd());
+    }
+
+    [Fact]
+    public void LongTextTurnsPagesOfFourRows_NoWordSplit()
+    {
+        var text = string.Join(" ", Enumerable.Repeat("together", 40));
+        var pages = Compose.KatPages(text);
+        Assert.True(pages.Count > 1);
+        foreach (var page in pages)
+        {
+            Assert.True(Kat.Cells(page) <= Kat.TextLimit);
+            foreach (var row in Rows(page)) Assert.All(row.Split(' ', StringSplitOptions.RemoveEmptyEntries), w => Assert.Equal("together", w));
+        }
+        Assert.Equal(40, pages.Sum(p => p.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length));
+    }
+
+    [Fact]
+    public void AWordLongerThanARowIsCut() =>
+        Assert.Equal(new string('x', 32), Rows(Compose.KatPages(new string('x', 40))[0])[0]);
 }

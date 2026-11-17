@@ -61,6 +61,49 @@ public static class Compose
 
     static int Length(string s) => s.EnumerateRunes().Count();
 
+    /// <summary>
+    /// Pages for the pet, rowsPerPage rows of Row cells each: a word that does not fit on the row starts the next one
+    /// (KAT itself just fills each row, splitting words: "I di / d it!"). A row that ends early is padded with spaces
+    /// so the next starts on a new line. A word longer than a row is cut.
+    /// </summary>
+    public static List<string> KatPages(string text, int rowsPerPage = Core.Kat.TextLimit / Row)
+    {
+        var rows = new List<string>();
+        string row = "";
+        int used = 0;
+        void NewRow() { rows.Add(row); row = ""; used = 0; }
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            int width = Core.Kat.Cells(word);
+            if (used > 0 && used + 1 + width > Row) NewRow();
+            if (used == 0 && width > Row)
+            {
+                foreach (var ch in Core.Kat.Chars(word))
+                {
+                    int w = Core.Kat.CharWidth(ch);
+                    if (used + w > Row) NewRow();
+                    row += ch;
+                    used += w;
+                }
+                continue;
+            }
+            if (used > 0) { row += " "; used++; }
+            row += word;
+            used += width;
+        }
+        if (used > 0) rows.Add(row);
+        if (rows.Count == 0) return new List<string> { "" };
+
+        var pages = new List<string>();
+        for (int start = 0; start < rows.Count; start += rowsPerPage)
+        {
+            var pageRows = rows.Skip(start).Take(rowsPerPage).ToList();
+            pages.Add(string.Concat(pageRows.Select((r, i) =>
+                i < pageRows.Count - 1 ? r + new string(' ', Row - Core.Kat.Cells(r)) : r)));
+        }
+        return pages;
+    }
+
     /// <summary>Pages of at most limit KAT cells, never splitting a character, preferring to break at a space.</summary>
     public static List<string> Paginate(string text, int limit = Core.Kat.TextLimit, int wordBacktrack = 20)
     {
