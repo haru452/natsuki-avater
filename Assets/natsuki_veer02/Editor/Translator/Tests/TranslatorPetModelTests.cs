@@ -96,11 +96,15 @@ public class TranslatorPetModelTests
         string still = $"{C.VelocityParam}Less{C.SleepStillSpeed}&{C.VoiceParam}Less{C.SleepVoiceLevel}";
         string back = $"{C.VelocityParam}Greater{C.SleepStillSpeed} | {{0}}:{C.VoiceParam}Greater{C.SleepVoiceLevel}";
         Assert.AreEqual("Idle", Layer(P.BodyLayerName).defaultState.name);
-        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Approach:{C.ArrivedParam}IfNot0 | Drowsy:{still}",
+        // Only once the wearer is no longer close does it set off (walking up to it never pushes it away).
+        Assert.AreEqual($"Walk:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed} | Approach:{C.CloseParam}IfNot0 | "
+                        + $"Approach:{C.ArrivedParam}IfNot0 | Drowsy:{still}",
             Transitions(State(P.BodyLayerName, "Idle")));
         Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Walk")));
-        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Idle:{C.ArrivedParam}If0",
+        // Near the spot it jumps the last bit instead of sliding in.
+        Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Land:{C.ArrivedParam}If0",
             Transitions(State(P.BodyLayerName, "Approach")));
+        Assert.AreEqual("Idle:@1", Transitions(State(P.BodyLayerName, "Land")));
 
         var drowsy = State(P.BodyLayerName, "Drowsy");
         var toBored = drowsy.transitions.Single(t => t.destinationState.name == "Bored");
@@ -168,13 +172,19 @@ public class TranslatorPetModelTests
     // ---- Walking toward its spot, facing the way it goes; blinking ----
 
     [Test]
-    public void Prefab_NoTrail_HopFacesItsSpotOrTheWearer()
+    public void Prefab_NoTrail_HopFacesItsSpotOrTheWayTheWearerFaced()
     {
         Assert.IsNull(Find("Pet_Root/Pet_Trail"), "walks to its spot, not along the wearer's path");
-        Assert.AreEqual(2, Find("Pet_Root/Pet_Follow").GetComponent<VRCParentConstraint>().Sources.Count);
+        var follow = Find("Pet_Root/Pet_Follow").GetComponent<VRCParentConstraint>();
+        Assert.AreEqual(3, follow.Sources.Count);
+        Assert.AreEqual(Find("Pet_Root/Pet_Heading/Pet_Target"), follow.Sources[2].SourceTransform, "extra pull while landing");
+        Assert.AreEqual(0f, follow.Sources[2].Weight);
+        var ahead = Find("Pet_Root/Pet_Heading/" + TranslatorPetWalker.AheadName);
+        Assert.Greater(ahead.localPosition.z, C.PetOffset.z + 5f, "far in front of the spot, along the wearer's heading");
+        Assert.AreEqual(C.PetOffset.x, ahead.localPosition.x);
         var aim = Find("Pet_Root/Pet_Follow/Pet_Hop").GetComponent<VRCAimConstraint>();
         Assert.IsNotNull(aim);
-        CollectionAssert.AreEqual(new[] { Find("Pet_Root/Pet_Heading/Pet_Target"), prefab.transform },
+        CollectionAssert.AreEqual(new[] { Find("Pet_Root/Pet_Heading/Pet_Target"), ahead },
             Enumerable.Range(0, aim.Sources.Count).Select(i => aim.Sources[i].SourceTransform));
         Assert.IsFalse(aim.AffectsRotationX);
         Assert.IsFalse(aim.AffectsRotationZ);
@@ -189,21 +199,38 @@ public class TranslatorPetModelTests
         Assert.AreEqual(C.ArriveRadius, arrive.radius);
         CollectionAssert.AreEqual(new[] { C.PetContactTag }, arrive.collisionTags);
         Assert.IsFalse(arrive.allowOthers);
+
+        var close = Find("Pet_Root/Pet_Follow").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.CloseParam);
+        Assert.AreEqual(C.CloseRadius, close.radius);
+        CollectionAssert.AreEqual(new[] { C.WearerContactTag }, close.collisionTags);
+        Assert.IsFalse(close.allowOthers);
+        Assert.IsTrue(prefab.GetComponents<VRCContactSender>().Any(s => s.collisionTags.Contains(C.WearerContactTag)), "the wearer's sender");
+    }
+
+    [Test]
+    public void Prefab_SpotFollowsTheWearerOnlyWhenTheBodyLayerSaysSo()
+    {
+        var pos = Find("Pet_Root/Pet_Heading").GetComponent<VRCPositionConstraint>();
+        Assert.AreEqual(prefab.transform, pos.Sources[0].SourceTransform);
+        Assert.AreEqual(pos.transform, pos.Sources[1].SourceTransform, "stays where it was otherwise");
     }
 
     static float Weight(AnimationClip clip, string path, System.Type type, int source) =>
         AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, type, "Sources.source" + source + ".Weight")).Evaluate(0f);
 
-    [TestCase("Walk", 1f, 0f)]
-    [TestCase("Approach", 1f, 0f)]
-    [TestCase("Idle", 0f, 1f)]
-    [TestCase("Bored", 0f, 1f)]
-    public void Body_FacesItsSpotWhileGoing_TheWearerWhileWaiting(string state, float spot, float wearer)
+    [TestCase("Walk", 1f, 0f, 1000f, 0f)]
+    [TestCase("Approach", 1f, 0f, 1000f, 0f)]
+    [TestCase("Land", 0f, 1f, 0f, 0.15f)]
+    [TestCase("Idle", 0f, 1f, 0f, 0f)]
+    [TestCase("Bored", 0f, 1f, 0f, 0f)]
+    public void Body_GoesToItsSpotFacingIt_WaitsFacingTheWayTheWearerFaced(string state, float spot, float ahead, float spotFollows, float pull)
     {
         var clip = Clip(State(P.BodyLayerName, state));
         const string hop = "Pet_Follow/Pet_Hop";
         Assert.AreEqual(spot, Weight(clip, hop, typeof(VRCAimConstraint), 0), "faces the waiting spot");
-        Assert.AreEqual(wearer, Weight(clip, hop, typeof(VRCAimConstraint), 1), "faces the wearer");
+        Assert.AreEqual(ahead, Weight(clip, hop, typeof(VRCAimConstraint), 1), "faces the way the wearer faced");
+        Assert.AreEqual(spotFollows, Weight(clip, C.PetHeadingName, typeof(VRCPositionConstraint), 0), "spot follows the wearer");
+        Assert.AreEqual(pull, Weight(clip, C.PetFollowName, typeof(VRCParentConstraint), 2), "landing pull");
         foreach (var axis in new[] { 0, 1, 2 })
             Assert.AreEqual(C.PetOffset[axis], AnimationUtility.GetEditorCurve(clip,
                 EditorCurveBinding.FloatCurve(M.TargetPath, typeof(Transform), "m_LocalPosition." + "xyz"[axis])).Evaluate(0f), 1e-4f, "spot " + axis);

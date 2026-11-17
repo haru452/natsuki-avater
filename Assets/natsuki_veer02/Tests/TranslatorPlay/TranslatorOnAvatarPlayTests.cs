@@ -61,7 +61,7 @@ public class TranslatorOnAvatarPlayTests
 
         Assert.IsTrue(root.gameObject.activeInHierarchy, "toggle On shows Pet_Root");
         Assert.IsTrue(body.gameObject.activeInHierarchy && body.enabled, "robot body drawn");
-        Assert.Less(Vector3.Distance(robot.position, avatar.transform.TransformPoint(0.8f, 0, 0.8f)), 0.3f, "beside the avatar");
+        Assert.Less(Vector3.Distance(robot.position, avatar.transform.TransformPoint(0.55f, 0, 0.55f)), 0.3f, "beside the avatar");
         Assert.Greater(robot.lossyScale.y, 0.5f, "full size");
 
         // Look from the avatar's eyes toward the pet.

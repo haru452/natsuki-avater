@@ -96,27 +96,34 @@ public static class TranslatorPetModel
     {
         controller.AddParameter(C.VoiceParam, AnimatorControllerParameterType.Float);
         controller.AddParameter(C.ArrivedParam, AnimatorControllerParameterType.Bool);
+        controller.AddParameter(C.CloseParam, AnimatorControllerParameterType.Bool);
         var walkBody = Bake(Load(C.PetWalkClip), model, M.RobotPath);
         // Walk: toward the waiting spot (which turns with the wearer), facing it — its own direction of travel,
-        // even when the wearer walks backwards. Approach: the same once the wearer stops (the spot stays put, so
-        // only looking around never moves the pet). Everything else stands at the spot facing the wearer.
+        // even when the wearer walks backwards. Approach: the same once the wearer stops. Land: a jump onto the
+        // spot. Everything else holds the spot where it is (so walking up to the pet or looking around never moves
+        // it) and faces the way the wearer faced; it sets off only once the wearer is no longer close.
         var idleClip = Body(Bake(Load(C.PetIdleClip), model, M.RobotPath), Pose.Wait, loop: true);
         var idle = State(sm, "Idle", 100, idleClip, outputDir);
         var walk = State(sm, "Walk", 200, Body(walkBody, Pose.Walk, loop: true), outputDir);
         var approach = State(sm, "Approach", 250, Body(Object.Instantiate(walkBody), Pose.Approach, loop: true), outputDir);
+        var land = State(sm, "Land", 270, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Land, loop: false), outputDir);
         var drowsy = State(sm, "Drowsy", 300, (AnimationClip)idle.motion, outputDir, save: false);
         var bored = State(sm, "Bored", 400, Body(Bake(Load(C.PetBoredClip), model, M.RobotPath), Pose.Wait, loop: true), outputDir);
         var wake = State(sm, "Wake", 500, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Wait, loop: false), outputDir);
         sm.defaultState = idle;
 
-        Go(idle, walk, Turn).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        var setOff = Go(idle, walk, Turn);
+        setOff.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
+        setOff.AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        Go(idle, approach, Turn).AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
         Go(idle, approach, Turn).AddCondition(AnimatorConditionMode.IfNot, 0f, C.ArrivedParam);
         var settle = Go(idle, drowsy, 0f);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepStillSpeed, C.VelocityParam);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepVoiceLevel, C.VoiceParam);
         Go(walk, approach, Turn).AddCondition(AnimatorConditionMode.Less, C.HopStopSpeed, C.VelocityParam);
         Go(approach, walk, Turn).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
-        Go(approach, idle, Turn).AddCondition(AnimatorConditionMode.If, 0f, C.ArrivedParam);
+        Go(approach, land, 0.1f).AddCondition(AnimatorConditionMode.If, 0f, C.ArrivedParam);
+        Go(land, idle, 0.2f, exitTime: 1f);
 
         // Any movement or sound while drowsy starts the minute again.
         Go(drowsy, idle, 0f).AddCondition(AnimatorConditionMode.Greater, C.SleepStillSpeed, C.VelocityParam);
@@ -150,7 +157,7 @@ public static class TranslatorPetModel
 
     const float Turn = 0.3f;
 
-    enum Pose { Walk, Approach, Wait }
+    enum Pose { Walk, Approach, Land, Wait }
 
     /// <summary>
     /// A baked motion plus where the pet goes and which way it faces: the waiting spot (all axes; the heading
@@ -161,8 +168,9 @@ public static class TranslatorPetModel
         float end = Mathf.Max(clip.length, 1f / Fps);
         M.SetHeadingWeight(clip, pose == Pose.Walk ? C.PetModelHeadingWeight : 0f, end);
         M.SetTarget(clip, AnimationCurve.Constant(0f, end, C.PetOffset.z), end);
-        bool going = pose != Pose.Wait;
-        TranslatorPetWalker.SetFacing(clip, end, spot: going ? 1f : 0f, wearer: going ? 0f : 1f);
+        bool going = pose is Pose.Walk or Pose.Approach;
+        TranslatorPetWalker.SetBody(clip, end, spot: going ? 1f : 0f, ahead: going ? 0f : 1f,
+            spotFollows: going ? 1000f : 0f, pull: pose == Pose.Land ? C.LandPull : 0f);
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
         settings.loopTime = loop;
         AnimationUtility.SetAnimationClipSettings(clip, settings);

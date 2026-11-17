@@ -51,15 +51,26 @@ public static class TranslatorConfig
     public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
     public const string PetSmileShape = "Smile";
     public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
-    /// <summary>On while the model stands at its waiting spot (a contact, not synced).</summary>
+    /// <summary>On while the model is near its waiting spot (a contact, not synced); then it jumps the rest.</summary>
     public const string ArrivedParam = "TranslatorPetArrived";
-    public const float ArriveRadius = 0.3f;
+    public const float ArriveRadius = 0.5f;
+    /// <summary>Extra pull toward the spot while jumping in (per frame, against the pet's own pose).</summary>
+    public const float LandPull = 0.15f;
+    /// <summary>
+    /// On while the wearer is within CloseRadius of the model (a contact): it waits where it is, so walking up to
+    /// it does not push it away; once the wearer is farther, it goes to its spot.
+    /// </summary>
+    public const string CloseParam = "TranslatorPetClose";
+    public const float CloseRadius = 2f;
+    public const string WearerContactTag = "TranslatorWearer";
+    /// <summary>A point this far ahead of the spot: waiting, the model faces the way the wearer faced.</summary>
+    public const float AheadDistance = 10f;
     public const float BlinkSeconds = 4f;
     public static readonly (string mesh, string shape)[] PetBlinkShapes = { ("EyeLash", "Blink"), ("Face", "EyeClose"), ("Eye", "EyeClose") };
     /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>
     public const float PetHeightRatio = 0.6f;
     /// <summary>Where the pet waits: in front and to the right of the wearer, on the ground (out from under their feet).</summary>
-    public static readonly Vector3 PetOffset = new Vector3(0.8f, 0f, 0.8f);
+    public static readonly Vector3 PetOffset = new Vector3(0.55f, 0f, 0.55f);
 
     /// <summary>
     /// Follow strength: weight of Pet_Target against the pet's own last pose (weight 1).

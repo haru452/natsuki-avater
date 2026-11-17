@@ -49,8 +49,11 @@ public static class TranslatorPrefabBuilder
             TranslatorReactionsBuilder.AddFacing(robot, gaze.transform);
             if (petModel != null)
             {
-                // Walk toward the spot facing the way it goes; wait there facing the wearer (TranslatorPetWalker).
-                TranslatorPetWalker.AddFacing(hop, target.transform, root.transform);
+                // Walk toward the spot facing the way it goes, jump in, wait facing ahead (TranslatorPetWalker).
+                TranslatorPetWalker.MakeSpotHoldable(heading);
+                TranslatorPetWalker.AddLandingPull(follow, target.transform);
+                TranslatorPetWalker.AddFacing(hop, target.transform, TranslatorPetWalker.AddAhead(heading.transform));
+                TranslatorPetWalker.AddClose(follow, root);
                 TranslatorPetWalker.AddArrive(target);
                 var look = robot.transform.Find(TranslatorReactionsBuilder.LookZoneName);
                 if (look != null) look.localPosition = new Vector3(0, top * 0.6f, 0);

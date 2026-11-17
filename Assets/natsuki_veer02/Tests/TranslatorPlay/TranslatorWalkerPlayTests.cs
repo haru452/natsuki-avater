@@ -41,14 +41,19 @@ public class TranslatorWalkerPlayTests
         var hop = follow.Find("Pet_Hop");
         var target = root.Find("Pet_Heading/Pet_Target");
 
-        // The two contacts, worked out from the distance as VRChat does: "arrived" and "near" (far off = a teleport,
-        // and the pet is snapped over).
-        float nearRadius = target.GetComponents<ContactReceiver>().Single(r => r.parameter == "TranslatorPetNear").radius;
+        // The contacts, worked out from the distances as VRChat does: "arrived" (near its spot), "near" (far off =
+        // a teleport, and the pet is snapped over) and "close" (the wearer is near the pet).
+        float Radius(Transform on, string param) => on.GetComponents<ContactReceiver>().Single(r => r.parameter == param).radius;
+        float nearRadius = Radius(target, "TranslatorPetNear"), arriveRadius = Radius(target, "TranslatorPetArrived");
+        float closeRadius = Radius(follow, "TranslatorPetClose");
+        bool landed = false;
         void Arrived()
         {
             float d = Vector3.Distance(follow.position, target.position);
-            motion.SetBool("TranslatorPetArrived", d < 0.3f);
+            motion.SetBool("TranslatorPetArrived", d < arriveRadius);
             toggle.SetBool("TranslatorPetNear", d < nearRadius);
+            motion.SetBool("TranslatorPetClose", Vector3.Distance(follow.position, avatar.transform.position) < closeRadius);
+            landed |= motion.GetCurrentAnimatorStateInfo(0).IsName("Land");
         }
         yield return null;
         toggle.SetBool("TranslatorActive", true);
@@ -96,7 +101,7 @@ public class TranslatorWalkerPlayTests
         Assert.Less(offPath.Max(), 2.5f, "heads for its spot beside the wearer instead of trailing behind");
         Assert.Greater(facing.Where((_, i) => i > facing.Count / 10).Min(), 0.7f, "faces the way it goes, never backwards");
 
-        // Stop: round to the front right, then face the wearer.
+        // Stop: round to the front right, jump the last bit, then face the way the wearer faces.
         motion.SetFloat("VelocityMagnitude", 0f);
         biggestStep = 0;
         last = follow.position;
@@ -108,10 +113,9 @@ public class TranslatorWalkerPlayTests
             last = follow.position;
         }
         Assert.Less(biggestStep, 6f, "walks round to the spot without jumping");
-        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.8f, 0, 0.8f)), 0.35f, "waits where the robot does");
-        var toWearer = avatar.transform.position - hop.position;
-        toWearer.y = 0;
-        Assert.Greater(Vector3.Dot(hop.forward, toWearer.normalized), 0.9f, "faces the wearer");
+        Assert.IsTrue(landed, "jumps into its spot instead of sliding");
+        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.55f, 0, 0.55f)), 0.35f, "waits where the robot does");
+        Assert.Greater(Vector3.Dot(hop.forward, avatar.transform.forward), 0.9f, "faces the way the wearer faced");
 
         // Looking around without moving: one full turn on the spot. The pet stays where it is.
         var before = follow.position;
@@ -123,6 +127,35 @@ public class TranslatorWalkerPlayTests
         }
         for (int i = 0; i < 60; i++) { Arrived(); yield return null; }
         Assert.Less(Vector3.Distance(follow.position, before), 0.05f, "stays put while the wearer only looks around");
+        Assert.Greater(Vector3.Dot(hop.forward, Quaternion.Euler(0, 90, 0) * Vector3.forward), 0.9f, "still faces the first direction");
+
+        // Walking up to the pet: it does not back away.
+        var toPet = follow.position - avatar.transform.position;
+        toPet.y = 0;
+        for (float walked = 0; walked < 0.6f; walked += 1f * Time.deltaTime)
+        {
+            avatar.transform.position += toPet.normalized * 1f * Time.deltaTime;
+            motion.SetFloat("VelocityMagnitude", 1f);
+            Arrived();
+            yield return null;
+        }
+        motion.SetFloat("VelocityMagnitude", 0f);
+        for (int i = 0; i < 120; i++) { Arrived(); yield return null; }
+        Assert.Less(Vector3.Distance(follow.position, before), 0.05f, "stays when the wearer comes close");
+
+        // Walking off past the close radius: it goes to its new spot.
+        avatar.transform.rotation = Quaternion.identity;
+        for (float walked = 0; walked < 4f; walked += 1.5f * Time.deltaTime)
+        {
+            avatar.transform.position += Vector3.forward * 1.5f * Time.deltaTime;
+            motion.SetFloat("VelocityMagnitude", 1.5f);
+            Arrived();
+            yield return null;
+        }
+        motion.SetFloat("VelocityMagnitude", 0f);
+        for (int i = 0; i < 600; i++) { Arrived(); yield return null; }
+        Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.55f, 0, 0.55f)), 0.35f, "follows once the wearer is away");
+        Assert.Greater(Vector3.Dot(hop.forward, Vector3.forward), 0.9f, "and faces the wearer's new direction");
     }
 }
 #endif
