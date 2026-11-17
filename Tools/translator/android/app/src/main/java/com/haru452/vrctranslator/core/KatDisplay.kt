@@ -2,6 +2,17 @@
 // KAT has no Chinese characters, so anything going to Chinese is shown in the chatbox only.
 package com.haru452.vrctranslator.core
 
+/** What OwnVoicePipeline drives; KatDisplay sends to VRChat, tests use a fake. */
+interface Display {
+    var targetIsChinese: Boolean
+    fun thinking()
+    fun show(r: TranslationResult)
+    fun error()
+    fun clear()
+    fun stop()
+    fun tick()
+}
+
 /**
  * thinking() / show(result) / error() / clear() / stop(), then call tick() every ~50 ms.
  * A shown page is rewritten (without clearing) every resendSeconds so late joiners get all of it;
@@ -19,7 +30,7 @@ class KatDisplay(
     private val resendSeconds: Double = 3.0,
     private val stepSeconds: Double = 0.25,
     private val errorSeconds: Double = 3.0,
-) {
+) : Display {
     companion object {
         const val MAX_BACKLOG = 3
         private val POINTER = KatOsc.PARAM_PREFIX + "KAT_Pointer"
@@ -29,7 +40,7 @@ class KatDisplay(
     private val chatboxMode = mode == DisplayMode.CHATBOX || mode == DisplayMode.BOTH
 
     /** Set before thinking(): when the answer will be Chinese, "..." goes to the chatbox, not KAT. */
-    var targetIsChinese = false
+    override var targetIsChinese = false
 
     private val kat get() = katMode && !targetIsChinese
     private val chatbox get() = chatboxMode || targetIsChinese
@@ -44,7 +55,7 @@ class KatDisplay(
 
     // --- commands -------------------------------------------------------
 
-    fun thinking() {
+    override fun thinking() {
         if (kat && !busy()) {
             reset()
             write("...", clear = true)
@@ -52,7 +63,7 @@ class KatDisplay(
         if (chatbox) safeSend(KatOsc.oscMessage("/chatbox/typing", true))
     }
 
-    fun show(r: TranslationResult) {
+    override fun show(r: TranslationResult) {
         val chinese = r.target == Lang.ZH
         if (katMode && !chinese) {
             val newPages = Compose.paginate(Compose.kat(r, showOriginal))
@@ -70,7 +81,7 @@ class KatDisplay(
         }
     }
 
-    fun error() {
+    override fun error() {
         if (kat && !busy()) {
             reset()
             write("(error)", clear = true)
@@ -80,7 +91,7 @@ class KatDisplay(
     }
 
     /** Wipe the text (e.g. the "..." when the audio turned out to hold no speech). */
-    fun clear() {
+    override fun clear() {
         if (kat && !busy()) {
             reset()
             queue = arrayListOf(listOf(KatOsc.oscMessage(POINTER, KatOsc.CLEAR_POINTER)))
@@ -90,14 +101,14 @@ class KatDisplay(
     }
 
     /** Forget everything; the avatar's toggle clears the text itself. */
-    fun stop() {
+    override fun stop() {
         reset()
         backlog = ArrayList()
     }
 
     // --- timing ---------------------------------------------------------
 
-    fun tick() {
+    override fun tick() {
         val now = clock()
         if (queue.isNotEmpty()) {
             if (now >= next) {
