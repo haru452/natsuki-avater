@@ -69,7 +69,10 @@ public static class TranslatorConfig
     // Name tag over the humanoid pet's head, like VRChat's own: icon, name, a pronoun pill and a status line.
     /// <summary>Whose face the icon shows: the pet herself (Natsuki).</summary>
     public const string NameTagAvatarPrefab = PetMaterialSource;
-    /// <summary>The icon photo (TranslatorIconCapture) and the finished tag picture (Tools/translator/nametag.py).</summary>
+    /// <summary>
+    /// The icon photo (cut from the wearer's cherry-blossom screenshot; TranslatorIconCapture can shoot one in Unity
+    /// instead, overwriting it) and the finished tag picture (Tools/translator/nametag.py).
+    /// </summary>
     public const string NameTagIconSource = "Assets/natsuki_veer02/Translator/NameTag_Icon.png";
     public const string NameTagTexture = "Assets/natsuki_veer02/Translator/NameTag.png";
     public const string NameTagName = "Pet_NameTag";
