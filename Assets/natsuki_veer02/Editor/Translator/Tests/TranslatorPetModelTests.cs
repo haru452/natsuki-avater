@@ -138,6 +138,26 @@ public class TranslatorPetModelTests
     }
 
     [Test]
+    public void Look_SmilesForAMoment_OncePerLook()
+    {
+        var face = RobotPath.Substring("Pet_Root/".Length) + "/EyeLash";
+        var glance = State(M.PatLayerName, "Glance");
+        var smile = AnimationUtility.GetEditorCurve(Clip(glance), EditorCurveBinding.FloatCurve(face, typeof(SkinnedMeshRenderer), "blendShape.Smile"));
+        float end = Clip(glance).length;
+        Assert.AreEqual(0f, smile.Evaluate(0f));
+        Assert.AreEqual(100f, smile.Evaluate(end * 0.4f), 1f, "smiles");
+        Assert.AreEqual(0f, smile.Evaluate(end), "and stops");
+        Assert.LessOrEqual(end, 2f, "just a moment");
+        Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(Clip(glance)).loopTime);
+        // Calm -> Glance when looked at; Glance -> Seen; Seen waits until the wearer looks away.
+        StringAssert.StartsWith($"Hearts:{C.PatParam}If0 | Glance:{C.LookedParam}If0", Transitions(State(M.PatLayerName, "Calm")));
+        Assert.AreEqual($"Hearts:{C.PatParam}If0 | Seen:@1", Transitions(glance));
+        Assert.AreEqual($"Hearts:{C.PatParam}If0 | Calm:{C.LookedParam}IfNot0", Transitions(State(M.PatLayerName, "Seen")));
+        var hearts = EditorCurveBinding.FloatCurve("Pet_Follow/" + C.HeartsName, typeof(ParticleSystem), "EmissionModule.enabled");
+        Assert.AreEqual(0f, AnimationUtility.GetEditorCurve(Clip(glance), hearts).Evaluate(0f), "no hearts");
+    }
+
+    [Test]
     public void Pat_SmilesWithHearts()
     {
         float Smile(string state) => AnimationUtility.GetEditorCurve(Clip(State(M.PatLayerName, state)),

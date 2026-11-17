@@ -49,6 +49,8 @@ public static class TranslatorMotionBuilder
         }
         BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
+        if (petModel != null)
+            TranslatorPetModel.AddGlance(System.Array.Find(controller.layers, l => l.name == PatLayerName).stateMachine, outputDir);
         if (petModel != null) TranslatorPetWalker.AddBlinkLayer(NewLayer(controller, TranslatorPetWalker.BlinkLayerName), outputDir);
         if (petModel == null)
             TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);

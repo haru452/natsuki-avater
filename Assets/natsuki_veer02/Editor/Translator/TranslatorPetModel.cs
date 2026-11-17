@@ -247,6 +247,39 @@ public static class TranslatorPetModel
         return new AnimationCurve(keys);
     }
 
+    /// <summary>
+    /// In the Pat layer (which owns the smile): when the wearer looks at her, a quick smile (Glance), then Seen
+    /// until they look away, so each look gets one smile. Petting still wins.
+    /// </summary>
+    public static void AddGlance(AnimatorStateMachine pat, string outputDir)
+    {
+        var states = pat.states.Select(s => s.state).ToArray();
+        var calm = states.Single(s => s.name == "Calm");
+        var hearts = states.Single(s => s.name == "Hearts");
+        const float end = 1.3f;
+
+        var glanceClip = Object.Instantiate((AnimationClip)calm.motion);
+        var smile = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(0.15f, 100f), new Keyframe(0.85f, 100f), new Keyframe(end, 0f));
+        foreach (var mesh in C.PetSmileMeshes)
+            AnimationUtility.SetEditorCurve(glanceClip,
+                EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + C.PetSmileShape), smile);
+        AnimationUtility.SetEditorCurve(glanceClip, EditorCurveBinding.FloatCurve(M.HeartsPath, typeof(ParticleSystem), "EmissionModule.enabled"),
+            AnimationCurve.Constant(0f, end, 0f));
+
+        var glance = pat.AddState("Glance", new Vector3(550, 100));
+        glance.motion = TranslatorAnimationBuilder.SaveClip(glanceClip, outputDir + "/Translator_Glance.anim");
+        glance.writeDefaultValues = false;
+        var seen = pat.AddState("Seen", new Vector3(550, 200));
+        seen.motion = calm.motion;
+        seen.writeDefaultValues = false;
+
+        Go(calm, glance, 0f).AddCondition(AnimatorConditionMode.If, 0f, C.LookedParam);
+        foreach (var s in new[] { glance, seen })
+            Go(s, hearts, 0f).AddCondition(AnimatorConditionMode.If, 0f, C.PatParam);
+        Go(glance, seen, 0f, exitTime: 1f);
+        Go(seen, calm, 0f).AddCondition(AnimatorConditionMode.IfNot, 0f, C.LookedParam);
+    }
+
     /// <summary>Smile while petted, neutral otherwise (on every face mesh that may carry the shape).</summary>
     public static void AddSmile(AnimationClip clip, float weight, float seconds)
     {
