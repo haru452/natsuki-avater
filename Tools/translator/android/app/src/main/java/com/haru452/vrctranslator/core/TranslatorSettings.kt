@@ -14,6 +14,8 @@ data class TranslatorSettings(
     /** What your Japanese is translated into: EN or ZH (the switch on the main screen). */
     var targetLang: Lang = Lang.EN,
     var ownModel: String = "1B",
+    /** Where your own voice comes from: "PC" (the PC's microphone, streamed by translator_pc.exe) or "PHONE". */
+    var micSource: String = "PC",
     var otherModel: String = "4B",
     var segmenter: SegmenterSettings = SegmenterSettings(),
 )

@@ -11,6 +11,8 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import com.haru452.vrctranslator.core.AudioPacket
+import com.haru452.vrctranslator.core.Rechunker
 import com.haru452.vrctranslator.core.Display
 import com.haru452.vrctranslator.core.KatDisplay
 import com.haru452.vrctranslator.core.KuromojiKana
@@ -29,6 +31,8 @@ data class Status(
     val running: Boolean = false,
     val models: String = "",
     val relayFound: Boolean = false,
+    /** null when your voice comes from the phone's mic; otherwise whether the PC's audio is arriving. */
+    val pcAudio: Boolean? = null,
     val listening: Boolean = false,
     val localAI: Boolean = true,
     val last: String = "",
@@ -146,6 +150,8 @@ class TranslatorService : Service() {
             pipeline.onOsc(a, args)
             TranslatorState.status.update { it.copy(listening = pipeline.active, localAI = pipeline.useLocalAI) }
         })
+        val pcMic = settings.micSource == "PC"
+        relay.pcMic = pcMic
         val display = LockedDisplay(KatDisplay(relay::send, settings.display, settings.katSync, settings.showOriginal, ::clock,
             onEvent = ::event)) { r ->
             TranslatorState.status.update { it.copy(ownOriginal = r.original, ownTranslation = r.translation) }
@@ -159,15 +165,21 @@ class TranslatorService : Service() {
         updateNotification("翻訳: 待っています（アバターの「翻訳」をオンに）")
 
         spawn("worker") { while (running) pipeline.processNext(300) }
-        spawn("mic") { micLoop(pipeline) }
+        // Own voice: from the PC's microphone (sent by translator_pc.exe) or from the phone's.
+        val rechunker = Rechunker()
+        val audio = if (pcMic) AudioReceiver { kind, samples ->
+            if (kind == AudioPacket.Kind.OWN_MIC && pipeline.active) rechunker.push(samples).forEach(pipeline::feedFrame)
+        } else null
+        if (!pcMic) spawn("mic") { micLoop(pipeline) }
         try {
             while (running) {
                 display.tick()
                 relay.tick(clock())
-                TranslatorState.status.update { it.copy(relayFound = relay.found) }
+                TranslatorState.status.update { it.copy(relayFound = relay.found, pcAudio = audio?.receiving) }
                 Thread.sleep(50)
             }
         } finally {
+            audio?.close()
             relay.close()
             llm.cancel()
         }

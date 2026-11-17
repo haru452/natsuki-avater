@@ -16,6 +16,7 @@ class SettingsStore(context: Context) {
         katSync = prefs.getInt("katSync", 8),
         targetLang = if (prefs.getString("targetLang", "EN") == "ZH") Lang.ZH else Lang.EN,
         ownModel = prefs.getString("ownModel", "1B") ?: "1B",
+        micSource = if (prefs.getString("micSource", "PC") == "PHONE") "PHONE" else "PC",
     )
 
     fun save(s: TranslatorSettings) {
@@ -26,6 +27,7 @@ class SettingsStore(context: Context) {
             .putInt("katSync", s.katSync)
             .putString("targetLang", s.targetLang.name)
             .putString("ownModel", s.ownModel)
+            .putString("micSource", s.micSource)
             .apply()
     }
 }

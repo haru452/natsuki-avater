@@ -13,7 +13,7 @@ object RelayProtocol {
     const val HELLO = "/translator/hello"
 
     /** session changes every launch, so the relay can tell a restarted app from the running one. */
-    fun helloMessage(session: Int, othersOn: Boolean): ByteArray = KatOsc.oscMessage(HELLO, session, othersOn)
+    fun helloMessage(session: Int, othersOn: Boolean, pcMic: Boolean): ByteArray = KatOsc.oscMessage(HELLO, session, othersOn, pcMic)
 }
 
 class RelayLink(
@@ -39,6 +39,8 @@ class RelayLink(
 
     /** Whether the other players' voices should be streamed (plan 3); false for now. */
     @Volatile var othersOn = false
+    /** Whether your own voice comes from the PC's microphone (the PC then streams it while 翻訳 is on). */
+    @Volatile var pcMic = false
 
     val boundPort: Int get() = socket.localPort
     val found: Boolean get() = lastReceived != 0L && (System.nanoTime() - lastReceived) / 1e9 < FOUND_SECONDS
@@ -60,7 +62,7 @@ class RelayLink(
     fun tick(now: Double) {
         if (pcIp().isBlank() || now < nextHello) return
         nextHello = now + HELLO_SECONDS
-        send(RelayProtocol.helloMessage(session, othersOn))
+        send(RelayProtocol.helloMessage(session, othersOn, pcMic))
     }
 
     private fun receiveLoop() {

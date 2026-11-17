@@ -70,11 +70,13 @@ class MainActivity : ComponentActivity() {
         var showOriginal by remember { mutableStateOf(settings.showOriginal) }
         var display by remember { mutableStateOf(settings.display) }
         var katSync by remember { mutableStateOf(settings.katSync.toString()) }
+        var micSource by remember { mutableStateOf(settings.micSource) }
 
         Column(Modifier.padding(20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("VRC Translator", style = MaterialTheme.typography.headlineSmall)
             StatusLine("中継", if (status.relayFound) "つながった" else "見つからない")
             StatusLine("自分の声", if (status.listening) "聞いています" else "止まっています")
+            status.pcAudio?.let { StatusLine("PC の音", if (it) "届いています" else "届いていません（翻訳オンのときだけ届きます）") }
             StatusLine("AI", if (status.localAI) "スマホの中（ローカル）" else "ローカル（Gemini はまだありません）")
             StatusLine("モデル", status.models.ifEmpty { "-" })
             if (status.note.isNotEmpty()) Text(status.note, color = MaterialTheme.colorScheme.error)
@@ -103,6 +105,18 @@ class MainActivity : ComponentActivity() {
             OutlinedTextField(pcIp, { pcIp = it; settings.pcIp = it.trim(); store.save(settings) },
                 label = { Text("PC の IP アドレス（中継の画面に出ます）") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), singleLine = true, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("自分の声のマイク:")
+                for ((source, label) in listOf("PC" to "PC", "PHONE" to "スマホ")) {
+                    FilterChip(selected = micSource == source, label = { Text(label) }, onClick = {
+                        micSource = source
+                        settings.micSource = source
+                        store.save(settings)
+                    })
+                }
+            }
+            if (micSource == "PC") Text("PC で translator_pc.exe（デスクトップの「VRC Translator PC」）を起動しておいてください。",
+                style = MaterialTheme.typography.bodySmall)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("原文も出す", Modifier.weight(1f))
                 Switch(showOriginal, { showOriginal = it; settings.showOriginal = it; store.save(settings) })

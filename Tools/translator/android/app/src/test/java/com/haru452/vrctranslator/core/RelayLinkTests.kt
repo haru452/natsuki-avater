@@ -12,7 +12,7 @@ import org.junit.Test
 
 class RelayLinkTests {
     @Test fun helloCarriesSessionAndOthersFlag() =
-        assertEquals("/translator/hello" to listOf<Any>(123, false), KatOsc.parseMessage(RelayProtocol.helloMessage(123, false)))
+        assertEquals("/translator/hello" to listOf<Any>(123, false, true), KatOsc.parseMessage(RelayProtocol.helloMessage(123, false, true)))
 
     @Test fun sendFailureDoesNotThrow() {
         RelayLink({ "203.0.113.1" }, 9, 0, { _, _ -> }).use { link ->
