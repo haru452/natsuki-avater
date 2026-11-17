@@ -12,37 +12,13 @@ public class ComposeTests
     internal static readonly TranslationResult JaResult = R("ja", "おはようございます", "Good morning", "おはようございます");
     internal static readonly TranslationResult EnResult = R("en", "Good morning", "おはよう", "おはよう");
 
+    // The pet's text is English only: Japanese next to it got mixed up ("here" showed as "heりe").
     [Fact]
-    public void JapaneseSpeechShowsEnglishThenKanaOriginal()
+    public void PetTextIsTheEnglishTranslationOnly()
     {
-        var text = Compose.Kat(JaResult, true);
-        Assert.StartsWith("Good morning", text);
-        Assert.Equal(32, text.IndexOf('('));
-        Assert.EndsWith("(おはようございます)", text);
+        Assert.Equal("Good morning", Compose.Kat(JaResult, true));
+        Assert.Equal("Good morning", Compose.Kat(JaResult, false));
     }
-
-    [Fact]
-    public void EnglishSpeechShowsKanaThenEnglishOriginal()
-    {
-        var text = Compose.Kat(EnResult, true);
-        Assert.StartsWith("おはよう", text);
-        Assert.EndsWith("(Good morning)", text.TrimEnd());
-        Assert.Equal(32, Kat.Cells(text[..text.IndexOf('(')]));
-    }
-
-    [Fact]
-    public void WithoutOriginal() => Assert.Equal("Good morning", Compose.Kat(JaResult, false));
-
-    [Fact]
-    public void RowPaddingCountsVoicedKatakanaAsTwoCells()
-    {
-        var text = Compose.Kat(R("en", "Game", "ゲーム", "ゲーム"), true);
-        Assert.Equal(32, Kat.Cells(text[..text.IndexOf('(')]));
-    }
-
-    [Fact]
-    public void MainLineExactlyOneRowNeedsNoPadding() =>
-        Assert.Equal(new string('a', 32) + "(x)", Compose.Kat(R("ja", "x", new string('a', 32), "x"), true));
 
     [Fact]
     public void ChatboxUsesKanjiAndFits144()
@@ -53,10 +29,6 @@ public class ComposeTests
         Assert.Equal(144, output.Length);
         Assert.EndsWith("…", output);
     }
-
-    [Fact]
-    public void EmptyKanaOriginalDropsTheBracket() =>
-        Assert.Equal("Tokyo", Compose.Kat(new TranslationResult(Lang.JA, Lang.EN, "東京", "Tokyo", KanaOriginal: ""), true));
 
     [Fact]
     public void LangParsesSenseVoiceTags()

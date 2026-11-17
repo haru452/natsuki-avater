@@ -41,19 +41,11 @@ public static class Compose
     public const int Row = 32;
     public const int ChatboxLimit = 144;
 
-    /// <summary>Japanese speech: translation, then (kana original) on the next row. English: kana translation, then (original).</summary>
-    public static string Kat(TranslationResult r, bool showOriginal)
-    {
-        var (main, original) = r.Source switch
-        {
-            Lang.JA => (r.Translation, r.KanaOriginal),
-            Lang.ZH => (r.KanaTranslation, ""),
-            _ => (r.KanaTranslation, r.Original),
-        };
-        if (!showOriginal || original.Length == 0) return main;
-        int pad = ((-Core.Kat.Cells(main)) % Row + Row) % Row;
-        return main + new string(' ', pad) + "(" + original + ")";
-    }
+    /// <summary>
+    /// The pet's text: the English translation only. Kana next to it got mixed up on the pet ("here" showed as
+    /// "heりe"), so Japanese goes to the chatbox instead (KatDisplay).
+    /// </summary>
+    public static string Kat(TranslationResult r, bool showOriginal) => r.Translation;
 
     public static string Chatbox(TranslationResult r, bool showOriginal)
     {

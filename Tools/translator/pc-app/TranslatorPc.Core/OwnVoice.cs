@@ -118,7 +118,7 @@ public class OwnVoice
         if (!IsCurrent(gen)) return; // recorded before the toggle went off
         IfCurrent(gen, () =>
         {
-            display.TargetIsChinese = settings.TargetLang == Lang.ZH;
+            display.ChatboxOnly = settings.TargetLang != Lang.EN;
             display.Thinking();
         });
 
@@ -133,7 +133,7 @@ public class OwnVoice
         }
         var source = heard.Lang;
         var target = source == Lang.JA ? settings.TargetLang : Lang.JA;
-        lock (gate) display.TargetIsChinese = target == Lang.ZH;
+        lock (gate) display.ChatboxOnly = target != Lang.EN;
 
         double t1 = clock();
         string translation;

@@ -1,10 +1,10 @@
-// Port of the phone app's KatDisplay. KAT has no Chinese characters, so anything going to Chinese goes to the chatbox.
+// Port of the phone app's KatDisplay. The pet's text (KAT) carries English only; Japanese and Chinese go to the chatbox.
 namespace TranslatorPc.Core;
 
 /// <summary>What the own-voice pipeline drives; KatDisplay sends to VRChat, tests use a fake.</summary>
 public interface IDisplay
 {
-    bool TargetIsChinese { get; set; }
+    bool ChatboxOnly { get; set; }
     void Thinking();
     void Show(TranslationResult r);
     void Error();
@@ -58,11 +58,14 @@ public class KatDisplay : IDisplay
         chatboxMode = mode is DisplayMode.CHATBOX or DisplayMode.BOTH;
     }
 
-    /// <summary>Set before Thinking(): when the answer will be Chinese, "..." goes to the chatbox, not KAT.</summary>
-    public bool TargetIsChinese { get; set; }
+    /// <summary>Set before Thinking(): when the answer will not be English, "..." goes to the chatbox, not KAT.</summary>
+    public bool ChatboxOnly { get; set; }
 
-    bool UseKat => katMode && !TargetIsChinese;
-    bool UseChatbox => chatboxMode || TargetIsChinese;
+    /// <summary>The "..." is on the pet (Thinking put it there and nothing has replaced it yet).</summary>
+    bool dotsOnKat;
+
+    bool UseKat => katMode && !ChatboxOnly;
+    bool UseChatbox => chatboxMode || ChatboxOnly;
 
     public void Thinking()
     {
@@ -70,14 +73,18 @@ public class KatDisplay : IDisplay
         {
             Reset();
             Write("...", clear: true);
+            dotsOnKat = true;
         }
         if (UseChatbox) SafeSend(Osc.Message("/chatbox/typing", true));
     }
 
     public void Show(TranslationResult r)
     {
-        bool chinese = r.Target == Lang.ZH;
-        if (katMode && !chinese)
+        // Kana next to English got mixed up on the pet ("here" showed as "heりe"): English only there.
+        bool chatOnly = r.Target != Lang.EN;
+        bool dots = dotsOnKat;
+        dotsOnKat = false;
+        if (katMode && !chatOnly)
         {
             var newPages = Compose.Paginate(Compose.Kat(r, showOriginal));
             if (Busy())
@@ -92,7 +99,14 @@ public class KatDisplay : IDisplay
             }
             else Start(newPages);
         }
-        if (chatboxMode || chinese)
+        else if (dots && !Busy())
+        {
+            // The "..." went up before we knew the answer would not be English: take it down.
+            Reset();
+            queue = new() { new() { Osc.Message(Core.Kat.Pointer, Core.Kat.ClearPointer) } };
+            next = clock();
+        }
+        if (chatboxMode || chatOnly)
         {
             SafeSend(Osc.Message("/chatbox/input", Compose.Chatbox(r, showOriginal), true, false));
             SafeSend(Osc.Message("/chatbox/typing", false));

@@ -86,7 +86,7 @@ public class OwnVoiceTests
     class FakeDisplay : IDisplay
     {
         public List<string> Events = new();
-        public bool TargetIsChinese { get; set; }
+        public bool ChatboxOnly { get; set; }
         public void Thinking() => Events.Add("thinking");
         public void Show(TranslationResult r) => Events.Add($"show {r.Translation} ({r.KanaOriginal}{r.KanaTranslation}) -> {r.Target}");
         public void Error() => Events.Add("error");
@@ -121,6 +121,7 @@ public class OwnVoiceTests
         Assert.Equal(("おはよう", Lang.JA, Lang.EN), translator.Calls.Single());
         Assert.Equal(new[] { "thinking", "show Good morning (かな(おはよう)) -> EN" }, display.Events);
         Assert.Equal("JA おはよう Good morning", logged.Single());
+        Assert.False(display.ChatboxOnly, "English goes on the pet");
         Assert.Contains(said, s => s.StartsWith("時間: 認識"));
     }
 
@@ -135,6 +136,7 @@ public class OwnVoiceTests
         p.ProcessNext(0);
         Assert.Equal(Lang.JA, translator.Calls.Single().Item3);
         Assert.Contains("show おはよう (かな(おはよう)) -> JA", display.Events);
+        Assert.True(display.ChatboxOnly, "Japanese goes to the chatbox, never the pet's text");
     }
 
     [Fact]
@@ -144,7 +146,7 @@ public class OwnVoiceTests
         p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
         Speak(p);
         p.ProcessNext(0);
-        Assert.True(display.TargetIsChinese);
+        Assert.True(display.ChatboxOnly);
         Assert.Equal(Lang.ZH, translator.Calls.Single().Item3);
     }
 

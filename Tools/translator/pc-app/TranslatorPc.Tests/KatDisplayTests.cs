@@ -172,12 +172,40 @@ public class KatDisplayTests
     public void ZhTargetGoesToChatboxEvenInKatMode()
     {
         var k = New(DisplayMode.KAT, true);
-        k.TargetIsChinese = true;
+        k.ChatboxOnly = true;
         k.Thinking();
         k.Show(new TranslationResult(Lang.JA, Lang.ZH, "こんにちは", "你好"));
         Run(k, 5.0);
         var got = Take();
         Assert.Contains(got, p => p.Address == "/chatbox/input" && (string)p.Args[0] == "你好\n(こんにちは)");
         Assert.DoesNotContain(got, p => p.Address.Contains("KAT_"));
+    }
+
+    [Fact]
+    public void JapaneseTranslationGoesToChatboxEvenInKatMode()
+    {
+        var k = New(DisplayMode.KAT, true);
+        k.ChatboxOnly = true;
+        k.Thinking();
+        k.Show(new TranslationResult(Lang.EN, Lang.JA, "Good morning", "おはよう", KanaTranslation: "おはよう"));
+        Run(k, 5.0);
+        var got = Take();
+        Assert.Contains(got, p => p.Address == "/chatbox/input" && (string)p.Args[0] == "おはよう\n(Good morning)");
+        Assert.DoesNotContain(got, p => p.Address.Contains("KAT_"));
+    }
+
+    [Fact]
+    public void ThinkingDotsAreWipedWhenTheAnswerGoesToTheChatbox()
+    {
+        var k = New(DisplayMode.KAT, true);
+        k.Thinking(); // before recognition: "..." on the pet
+        Run(k, 2.0);
+        Take();
+        k.ChatboxOnly = true; // it was English: the answer is Japanese
+        k.Show(new TranslationResult(Lang.EN, Lang.JA, "Good morning", "おはよう"));
+        Run(k, 2.0);
+        var got = Take();
+        Assert.Contains(got, p => p.Address == Kat.Pointer && (int)p.Args[0] == Kat.ClearPointer);
+        Assert.DoesNotContain(got, p => p.Address.Contains("KAT_CharSync"));
     }
 }
