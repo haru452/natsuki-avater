@@ -84,7 +84,7 @@ public class TranslatorWalkerPlayTests
                 yield return null;
                 var moved = follow.position - last;
                 last = follow.position;
-                biggestStep = Mathf.Max(biggestStep, moved.magnitude / Time.deltaTime);
+                biggestStep = Mathf.Max(biggestStep, moved.magnitude);
                 if (path.Count > 60 && moved.magnitude > 0.005f)
                 {
                     offPath.Add(Vector3.Distance(follow.position, target.position));
@@ -96,8 +96,10 @@ public class TranslatorWalkerPlayTests
             }
         }
         Debug.Log($"[WalkDiag] farthest from its spot {offPath.Max():0.00} m, worst facing {facing.Min():0.00}, " +
-                  $"mean facing {facing.Average():0.00}, samples {facing.Count}, fastest {biggestStep:0.0} m/s");
-        Assert.Less(biggestStep, 6f, "never jumps: no faster than a little over the wearer's run");
+                  $"mean facing {facing.Average():0.00}, samples {facing.Count}, biggest step {biggestStep:0.000} m");
+        // Per frame, not per second: the constraints move a share of the gap each frame, so a short frame in the
+        // test run would read as a burst of speed. 0.1 m a frame is 6 m/s at 60 fps; the old teleport was 3.6 m.
+        Assert.Less(biggestStep, 0.1f, "never jumps");
         Assert.Less(offPath.Max(), 2.5f, "heads for its spot beside the wearer instead of trailing behind");
         Assert.Greater(facing.Where((_, i) => i > facing.Count / 10).Min(), 0.7f, "faces the way it goes, never backwards");
 
@@ -109,10 +111,10 @@ public class TranslatorWalkerPlayTests
         {
             Arrived();
             yield return null;
-            biggestStep = Mathf.Max(biggestStep, (follow.position - last).magnitude / Time.deltaTime);
+            biggestStep = Mathf.Max(biggestStep, (follow.position - last).magnitude);
             last = follow.position;
         }
-        Assert.Less(biggestStep, 6f, "walks round to the spot without jumping");
+        Assert.Less(biggestStep, 0.1f, "walks round to the spot without jumping (the landing jump included)");
         Assert.IsTrue(landed, "jumps into its spot instead of sliding");
         Assert.Less(Vector3.Distance(follow.position, avatar.transform.TransformPoint(0.55f, 0, 0.55f)), 0.35f, "waits where the robot does");
         Assert.Greater(Vector3.Dot(hop.forward, avatar.transform.forward), 0.9f, "faces the way the wearer faced");
