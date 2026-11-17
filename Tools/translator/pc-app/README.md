@@ -28,7 +28,7 @@ PC のマイク → 音声認識（SenseVoice、日本語は ReazonSpeech で聞
 
 1. 音声認識のモデルを置く: `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17` の `model.int8.onnx` と `tokens.txt` を
    `models\sense-voice\` に（git には入れません）。
-   日本語用（任意・おすすめ）: `sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01` の `*.int8.onnx` 3 つと `tokens.txt` を `modelseazon\` に
+   日本語用（任意・おすすめ）: `sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01` の `*.int8.onnx` 3 つと `tokens.txt` を `models\reazon\` に
 2. `powershell -ExecutionPolicy Bypass -File publish.ps1` → `publish\translator_pc.exe` と `publish\models\`、デスクトップのショートカット
 3. 確かめる: `publish\translator_pc.exe --test-wav <16 kHz mono の wav>`（認識・かな・DeepL の結果を表示）
 
