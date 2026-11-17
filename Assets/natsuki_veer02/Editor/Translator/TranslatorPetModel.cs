@@ -75,7 +75,7 @@ public static class TranslatorPetModel
         if (!IsModel(robot) || avatar.ViewPosition.y <= 0f) return;
         float s = C.PetHeightRatio * avatar.ViewPosition.y / EyeHeight(robot);
         robot.localScale = Vector3.one * s;
-        Lift(instance.transform.Find(C.PetRootName + "/" + C.PetFollowName + "/" + C.TextName), s, C.TextHeightAboveRobot);
+        // (The text rides her head — a chat bubble — so it needs no lift.)
         Lift(instance.transform.Find(C.PetRootName + "/" + C.PetFollowName + "/" + C.HeartsName), s, 0f);
         PrefabUtility.RecordPrefabInstancePropertyModifications(robot);
     }

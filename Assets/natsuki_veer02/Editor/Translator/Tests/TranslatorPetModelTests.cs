@@ -7,6 +7,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Constraint.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+using nadena.dev.modular_avatar.core;
 using C = TranslatorConfig;
 using M = TranslatorMotionBuilder;
 using P = TranslatorPetModel;
@@ -73,11 +74,10 @@ public class TranslatorPetModelTests
     }
 
     [Test]
-    public void Prefab_TextAndHeartsSitAboveTheHead()
+    public void Prefab_HeartsSitAboveTheHead()
     {
         float eye = P.EyeHeight(Find(RobotPath));
         Assert.Greater(eye, 0.3f);
-        Assert.Greater(Find("Pet_Root/Pet_Follow/" + C.TextName).localPosition.y, eye + 0.05f);
         Assert.Greater(Find("Pet_Root/Pet_Follow/" + C.HeartsName).localPosition.y, eye);
     }
 
@@ -202,9 +202,9 @@ public class TranslatorPetModelTests
             float petEye = P.EyeHeight(robot) * robot.localScale.y;
             Assert.AreEqual(0.6f * 1.4f, petEye, 0.01f);
 
-            float prefabText = Find("Pet_Root/Pet_Follow/" + C.TextName).localPosition.y;
-            Assert.AreEqual((prefabText - C.TextHeightAboveRobot) * robot.localScale.y + C.TextHeightAboveRobot,
-                placed.transform.Find("Pet_Root/Pet_Follow/" + C.TextName).localPosition.y, 1e-3f, "text above the resized head");
+            // The bubble rides her head, so it resizes with her and stays above the name tag.
+            var head = robot.GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+            Assert.Greater(head.Find(C.TextName).position.y, head.Find(C.NameTagName).position.y, "bubble above the resized head");
         }
         finally
         {
@@ -294,6 +294,23 @@ public class TranslatorPetModelTests
         var robotScale = Find(RobotPath).lossyScale.x;
         Assert.AreEqual(C.NameTagWidth, size.x / robotScale, 0.01f);
         Assert.AreEqual(C.NameTagWidth * 256f / 768f, size.y / robotScale, 0.01f, "the picture's shape");
+    }
+
+    [Test]
+    public void Subtitle_IsAChatBubbleOverHerHead_FacingWhoeverLooks()
+    {
+        var head = Find(RobotPath).GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var text = head.Find(C.TextName);
+        Assert.IsNotNull(text, "rides her head");
+        Assert.IsNull(Find("Pet_Root/Pet_Follow/" + C.TextName), "not the robot's place");
+        Assert.Greater(text.position.y, head.Find(C.NameTagName).position.y, "above the name tag");
+        var quad = text.Find(C.KatObjectName + "/" + C.KatConstraintName + "/" + C.KatTextName);
+        Assert.IsNotNull(quad, "KAT's own hierarchy, so its clips still find the text");
+        var mat = quad.GetComponent<MeshRenderer>().sharedMaterial;
+        Assert.AreEqual(TranslatorChatBubble.ShaderName, mat.shader.name);
+        Assert.IsTrue(mat.HasProperty("_Char0") && mat.HasProperty("_Char127"), "KAT writes the characters here");
+        Assert.AreEqual(Resources.Load<Material>(C.KatTextMaterialResource).mainTexture, mat.mainTexture, "KAT's letters");
+        Assert.IsNotNull(text.GetComponent<ModularAvatarMergeAnimator>(), "KAT's animator merged here");
     }
 
     [Test]

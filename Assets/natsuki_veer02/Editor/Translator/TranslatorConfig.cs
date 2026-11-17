@@ -81,6 +81,8 @@ public static class TranslatorConfig
     public const float NameTagWidth = 0.55f;
     /// <summary>Above the head bone, clearing the hair and halo (metres before the pet's scale).</summary>
     public const float NameTagLift = 0.35f;
+    /// <summary>The chat bubble's bottom, this far above the name tag's centre (metres before the pet's scale).</summary>
+    public const float ChatBubbleLift = 0.13f;
     public const float BlinkSeconds = 4f;
     public static readonly (string mesh, string shape)[] PetBlinkShapes = { ("EyeLash", "Blink"), ("Face", "EyeClose"), ("Eye", "EyeClose") };
     /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>

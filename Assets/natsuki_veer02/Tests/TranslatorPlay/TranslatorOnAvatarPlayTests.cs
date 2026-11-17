@@ -52,7 +52,7 @@ public class TranslatorOnAvatarPlayTests
 
         var robot = root.Find("Pet_Follow/Pet_Hop/Pet_Robot");
         var body = robot.Find("Body").GetComponent<Renderer>();
-        var text = root.Find("Pet_Follow/Pet_Text");
+        var text = root.GetComponentsInChildren<Transform>(true).First(t => t.name == "Pet_Text"); // over the robot, or on Natsuki's head
         Debug.Log($"[PetDiag] Pet_Root active={root.gameObject.activeInHierarchy} robotPos={robot.position} " +
                   $"avatarPos={avatar.transform.position} lossyScale={robot.lossyScale} bodyEnabled={body.enabled} " +
                   $"bounds={body.bounds} textPos={text.position} state={toggle.GetCurrentAnimatorStateInfo(0).shortNameHash}");

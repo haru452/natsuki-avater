@@ -17,14 +17,25 @@ public static class TranslatorIconCapture
     /// <summary>A check shot of the built pet with her name tag (PetPreview*.png in the system temp folder), front and side.</summary>
     public static void PreviewPet()
     {
-        Capture(TranslatorSetup.PrefabPath, Path.Combine(Path.GetTempPath(), "PetPreview.png"), "Pet_Robot", 3.2f, 30f);
-        Capture(TranslatorSetup.PrefabPath, Path.Combine(Path.GetTempPath(), "PetPreviewSide.png"), "Pet_Robot", 3.2f, 30f, yaw: 70f);
+        Capture(TranslatorSetup.PrefabPath, Path.Combine(Path.GetTempPath(), "PetPreview.png"), "Pet_Robot", 3.2f, 30f, text: "Hello! Nice to meet you.");
+        Capture(TranslatorSetup.PrefabPath, Path.Combine(Path.GetTempPath(), "PetPreviewSide.png"), "Pet_Robot", 3.2f, 30f, yaw: 70f,
+            text: "Let's show them, \"I did it! I did it!\" This is a longer one.");
+    }
+
+    /// <summary>Switches the subtitle on and writes text into it, as KAT would (ASCII only: code = char - 32).</summary>
+    static void ShowText(Transform subject, string text)
+    {
+        var quad = TranslatorPetModel.FindDeep(subject, C.KatTextName);
+        if (quad == null) return;
+        for (var t = quad; t != null && t != subject; t = t.parent) t.gameObject.SetActive(true);
+        var mat = quad.GetComponent<MeshRenderer>().material;
+        for (int i = 0; i < 128; i++) mat.SetFloat("_Char" + i, i < text.Length ? text[i] - 32 : 0);
     }
 
     public static void Capture(string avatarPrefab, string outputPath) => Capture(avatarPrefab, outputPath, null, 1.0f, 24f);
 
     /// <summary>focus: a child to frame (its Head bone, else itself); null frames the avatar's own head.</summary>
-    static void Capture(string avatarPrefab, string outputPath, string focus, float distance, float fov, float yaw = 0f)
+    static void Capture(string avatarPrefab, string outputPath, string focus, float distance, float fov, float yaw = 0f, string text = null)
     {
         var avatar = (GameObject)Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(avatarPrefab)
             ?? throw new System.InvalidOperationException("[Translator] アバターがありません: " + avatarPrefab));
@@ -36,6 +47,7 @@ public static class TranslatorIconCapture
             avatar.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             var subject = focus == null ? avatar.transform : TranslatorPetModel.FindDeep(avatar.transform, focus);
             for (var t = subject; t != null; t = t.parent) t.gameObject.SetActive(true); // the pet waits switched off
+            if (text != null) ShowText(subject, text);
             var animator = subject.GetComponent<Animator>();
             var head = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : TranslatorPetModel.FindDeep(subject, "Head");
             var face = head != null ? head.position + Vector3.up * 0.09f : subject.position + new Vector3(0, 1.4f, 0);

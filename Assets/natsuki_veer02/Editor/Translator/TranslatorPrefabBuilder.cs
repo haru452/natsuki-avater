@@ -59,17 +59,21 @@ public static class TranslatorPrefabBuilder
                 if (look != null) look.localPosition = new Vector3(0, top * 0.6f, 0);
             }
             if (petModel == null) TranslatorReactionsBuilder.AddPatZone(robot);
-            else
+            Transform head = null;
+            if (petModel != null)
             {
-                var head = TranslatorPetModel.FindDeep(robot.transform, "Head");
+                head = TranslatorPetModel.FindDeep(robot.transform, "Head");
                 TranslatorReactionsBuilder.AddPatZone(head, new Vector3(0, 0.08f, 0));
                 TranslatorNameTag.Add(head, robot.transform, outputDir);
             }
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);
             if (petModel == null) TranslatorSleepBuilder.AddZzz(follow.transform, outputDir);
             AddMerge(pet, TranslatorMotionBuilder.BuildMotionController(outputDir, petModel));
-            var text = Child(follow.transform, C.TextName, new Vector3(0, top + C.TextHeightAboveRobot, 0));
-            BuildKatText(text.transform);
+            // The robot's text floats over it; Natsuki's is a chat bubble over her head, facing whoever looks.
+            var text = petModel == null
+                ? Child(follow.transform, C.TextName, new Vector3(0, top + C.TextHeightAboveRobot, 0))
+                : TranslatorChatBubble.AddAnchor(head, robot.transform);
+            BuildKatText(text.transform, petModel == null ? Resources.Load<Material>(C.KatTextMaterialResource) : TranslatorChatBubble.Material(outputDir));
             AddMerge(text, TranslatorAnimationBuilder.BuildKatController(outputDir, katSyncCount));
 
             var sign = Child(root.transform, C.SignRootName, new Vector3(0, C.SignFallbackHeight, 0));
@@ -214,13 +218,13 @@ public static class TranslatorPrefabBuilder
     }
 
     /// <summary>The same hierarchy KAT's installer makes, so KAT's clips find "KillFrenzyAvatarText/Constraint/Text".</summary>
-    static void BuildKatText(Transform parent)
+    static void BuildKatText(Transform parent, Material material)
     {
         var kat = Child(parent, C.KatObjectName, Vector3.zero);
         var constraint = Child(kat.transform, C.KatConstraintName, Vector3.zero);
         var quad = Primitive(PrimitiveType.Quad, C.KatTextName, constraint.transform);
         quad.transform.localScale = new Vector3(C.TextSize.x, C.TextSize.y, 1f);
-        quad.GetComponent<MeshRenderer>().sharedMaterial = Resources.Load<Material>(C.KatTextMaterialResource);
+        quad.GetComponent<MeshRenderer>().sharedMaterial = material;
         kat.SetActive(false);
     }
 
