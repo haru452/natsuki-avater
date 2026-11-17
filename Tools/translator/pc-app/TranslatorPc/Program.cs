@@ -151,11 +151,15 @@ static class Program
         var heard = stt.Recognize(pcm);
         Console.WriteLine($"認識 {sw.Elapsed.TotalSeconds:0.00} 秒: [{heard.Lang}] {heard.Text}");
         if (heard.Lang == Lang.JA) Console.WriteLine("かな: " + kana.ToKana(heard.Text));
+        if (heard.Lang != Lang.JA)
+        {
+            Console.WriteLine("そのまま出します（日本語には訳しません）: " + heard.Text);
+            return 0;
+        }
         try
         {
             sw.Restart();
-            var target = heard.Lang == Lang.JA ? settings.TargetLang : Lang.JA;
-            Console.WriteLine($"DeepL {sw.Elapsed.TotalSeconds:0.00} 秒: " + deepl.Translate(heard.Text, heard.Lang, target));
+            Console.WriteLine($"DeepL {sw.Elapsed.TotalSeconds:0.00} 秒: " + deepl.Translate(heard.Text, heard.Lang, settings.TargetLang));
         }
         catch (Exception e) when (e is DeepLException or HttpRequestException or TaskCanceledException)
         {
