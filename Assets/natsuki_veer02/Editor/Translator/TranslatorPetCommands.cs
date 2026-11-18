@@ -42,6 +42,10 @@ public static class TranslatorPetCommands
         sm.defaultState = free;
         TranslatorAnimationBuilder.AddDriver(tooFar, (C.WaitParam, 0f), (C.SitParam, 0f));
         nod.motion = TranslatorAnimationBuilder.SaveClip(NodClip(model), outputDir + "/Translator_PetNod.anim");
+        // An empty clip, not none: a motionless state in this Write Defaults off layer froze the whole avatar once she
+        // had nodded (stuck smiling; the ペット toggle could no longer hide her).
+        var empty = TranslatorAnimationBuilder.SaveClip(new AnimationClip(), outputDir + "/Translator_Empty.anim");
+        foreach (var s in new[] { free, waiting, tooFar }) s.motion = empty;
         Go(free, nod, AnimatorConditionMode.If, C.WaitParam);
         var nodded = nod.AddTransition(waiting);
         nodded.hasExitTime = true;

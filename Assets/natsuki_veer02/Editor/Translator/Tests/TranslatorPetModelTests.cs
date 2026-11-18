@@ -89,6 +89,10 @@ public class TranslatorPetModelTests
                 TranslatorPetCommands.WaitLayerName, TranslatorPetCommands.TurnLayerName, TranslatorPetGaze.LayerName },
             c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
+        // A state with no motion in a Write Defaults off layer froze the whole avatar after she nodded (smiling, and
+        // the ペット toggle could no longer hide her): every state gets a clip, if only an empty one.
+        CollectionAssert.IsEmpty(c.layers.SelectMany(l => l.stateMachine.states.Where(s => s.state.motion == null)
+            .Select(s => l.name + "/" + s.state.name)));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VoiceParam).type);
     }
 
