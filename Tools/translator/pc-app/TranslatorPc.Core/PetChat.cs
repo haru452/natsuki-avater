@@ -1,5 +1,5 @@
-// Talking with Homare: called by name (and not told to do something), she answers in English on her bubble, through
-// the Gemini API. Only the wearer's own recognized words go to Gemini, and only when they call her.
+// Talking with Homare: while the 会話 toggle is on, whatever the wearer says (not a command) is for her, and she
+// answers in English on her bubble, through the Gemini API. Only the wearer's own recognized words go to Gemini.
 // The HTTP call lives in the exe (PetChat takes it as a function), so this stays testable.
 using System.Text;
 using System.Text.Json;

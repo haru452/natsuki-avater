@@ -135,7 +135,7 @@ static class Program
                     "翻訳:        " + (pipeline.Translating ? "オン" : "オフ（名前を呼ぶと反応だけします）"),
                     "会話:        " + (!settings.PetChat ? "オフ（アバターの「会話」か C キーで切り替え）"
                         : settings.GeminiKey.Trim().Length == 0 ? "Gemini のキーがありません（G キーで入れてください）"
-                        : "名前を呼ぶと、ほまれが英語で返事します（Gemini" + (chat.Model != null ? ": " + chat.Model : "") + "）"),
+                        : "オン: 話したことは全部ほまれへ。英語で返事し、こっちを向きます。翻訳はしません（Gemini" + (chat.Model != null ? ": " + chat.Model : "") + "）"),
                     "マイク:      " + mic.State,
                     "DeepL キー:  " + Settings.MaskKey(settings.DeepLKey),
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),

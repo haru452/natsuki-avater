@@ -76,6 +76,12 @@ public class OwnVoice
         else SetTranslating(value);
     }
 
+    /// <summary>
+    /// Talking with her: the 会話 toggle is on and there is a Gemini key. Then everything said is for her (she answers
+    /// and looks at the wearer), and nothing is translated.
+    /// </summary>
+    public bool Chatting => chat != null && settings.PetChat && settings.GeminiKey.Trim().Length > 0;
+
     /// <summary>Talking with her (Gemini) on or off: the avatar's 会話 toggle or the C key. True when it changed.</summary>
     public bool SetChatting(bool on)
     {
@@ -84,6 +90,7 @@ public class OwnVoice
             if (on == settings.PetChat) return false;
             settings.PetChat = on;
         }
+        if (!on) petCall?.LookAtWearer(false);
         say(on ? "会話: オン" : "会話: オフ");
         return true;
     }
@@ -199,6 +206,7 @@ public class OwnVoice
         var source = heard.Lang;
         var kanaOriginal = source == Lang.JA ? kana.ToKana(heard.Text) : "";
         // Her name (and a command after it): she reacts at once, without waiting for DeepL.
+        bool commanded = false;
         if (petCall != null)
         {
             string? reaction = null;
@@ -206,12 +214,15 @@ public class OwnVoice
             var also = string.Join(" ", heard.AllTexts.Skip(1));
             IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings, also));
             if (reaction != null) say(reaction);
-            // Called by name, not told to do something: she answers (translated or not; for playing alone too).
-            if (chat != null && settings.PetChat && petCall.LastWasCall)
-            {
-                Answer(gen, heard.Text);
-                return;
-            }
+            commanded = reaction != null && !petCall.LastWasCall;
+        }
+        // Talking with her (the 会話 toggle): whatever is said is for her, name or not; a command is only done.
+        if (Chatting)
+        {
+            if (commanded) return;
+            IfCurrent(gen, () => petCall?.LookAtWearer(true));
+            Answer(gen, heard.Text);
+            return;
         }
         bool translating;
         lock (gate) translating = Translating;

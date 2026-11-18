@@ -76,6 +76,16 @@ public class PetCall
         }
     }
 
+    /// <summary>
+    /// While talking with her (PetChat): she looks at the wearer and keeps looking (as told こっち向いて), or, when the
+    /// talk is switched off, stops.
+    /// </summary>
+    public void LookAtWearer(bool on)
+    {
+        var parameters = on ? PetCommands.Parameters(PetCommand.LookAtMe) : new[] { (PetCommands.FaceParam, false) };
+        foreach (var (address, value) in parameters) send(Osc.Message(address, value));
+    }
+
     /// <summary>The last sentence Hear took called her by name without a command (she may answer it: PetChat).</summary>
     public bool LastWasCall { get; private set; }
 

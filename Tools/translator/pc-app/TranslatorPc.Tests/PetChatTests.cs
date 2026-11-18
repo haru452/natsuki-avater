@@ -219,10 +219,10 @@ public class OwnVoiceChatTests
     readonly List<string> said = new();
     double now;
 
-    OwnVoice Make(bool chatOn = true)
+    OwnVoice Make(bool chatOn = true, string key = "k")
     {
         var call = new PetCall(_ => { }, () => now);
-        var p = new OwnVoice(new Settings { PetChat = chatOn }, stt, translator, display, new Kana(),
+        var p = new OwnVoice(new Settings { PetChat = chatOn, GeminiKey = key }, stt, translator, display, new Kana(),
             (_, _, _) => { }, () => now, said.Add, call, chat);
         p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
         return p;
@@ -263,10 +263,18 @@ public class OwnVoiceChatTests
     }
 
     [Fact]
-    public void WithoutHerName_NothingGoesToGemini()
+    public void WithoutHerName_SheStillAnswers_WhileTalking()
     {
         stt.Answer = new(Lang.JA, "おはよう", true);
         Say(Make());
+        Assert.Equal(new[] { "おはよう" }, chat.Heard);
+        Assert.Equal(0, translator.Calls);
+    }
+
+    [Fact]
+    public void NoGeminiKey_SpeechIsTranslatedAsBefore()
+    {
+        Say(Make(key: ""));
         Assert.Empty(chat.Heard);
         Assert.Equal(1, translator.Calls);
     }

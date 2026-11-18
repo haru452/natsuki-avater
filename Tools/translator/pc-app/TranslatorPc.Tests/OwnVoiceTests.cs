@@ -220,6 +220,50 @@ public class OwnVoiceTests
         Assert.Equal(new[] { "会話: オフ", "会話: オン" }, said);
     }
 
+    class FakeChat : IPetChat
+    {
+        public readonly List<string> Heard = new();
+        public string Reply(string said) { Heard.Add(said); return "Hi!"; }
+    }
+
+    [Fact]
+    public void Talking_EverythingSaidIsForHer_SheLooksAtTheWearer_NothingIsTranslated()
+    {
+        var sent = new List<(string, object)>();
+        var call = new PetCall(b => { var (a, args) = Osc.Parse(b); sent.Add((a, args[0])); }, () => now);
+        var chat = new FakeChat();
+        var settings = new Settings { GeminiKey = "key" };
+        var p = new OwnVoice(settings, stt, translator, display, new FakeKana(), (_, _, _) => { }, () => now, said.Add, call, chat);
+        p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
+
+        stt.Answer = new(Lang.JA, "割れちゃう", true); // her name misheard: still for her
+        Speak(p);
+        p.ProcessNext(0);
+        stt.Answer = new(Lang.EN, "It is difficult to pronounce.", true);
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Equal(new[] { "割れちゃう", "It is difficult to pronounce." }, chat.Heard);
+        Assert.Empty(translator.Calls);
+        Assert.Contains((PetCommands.FaceParam, (object)true), sent);
+
+        sent.Clear();
+        stt.Answer = new(Lang.JA, "誉、すわって", true); // a command is done, not answered or translated
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Equal(2, chat.Heard.Count);
+        Assert.Empty(translator.Calls);
+        Assert.Contains((PetCommands.SitParam, (object)true), sent);
+
+        sent.Clear();
+        p.OnOsc(OwnVoice.ChatParam, new object[] { false }); // talk over: she stops looking, and speech is translated again
+        Assert.Contains((PetCommands.FaceParam, (object)false), sent);
+        stt.Answer = new(Lang.JA, "おはよう", true);
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Single(translator.Calls);
+        Assert.Equal(2, chat.Heard.Count);
+    }
+
     [Fact]
     public void ChineseTargetIsMarkedForTheChatbox()
     {
