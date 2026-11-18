@@ -209,7 +209,7 @@ Material:
     - _Glossiness: 0.5
     - _GlossyReflections: 1
     - _GrowEnabled: 0
-    - _LiftY: 2.6999998
+    - _LiftY: 1.55
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1

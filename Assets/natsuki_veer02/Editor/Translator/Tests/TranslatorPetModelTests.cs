@@ -212,7 +212,7 @@ public class TranslatorPetModelTests
 
             // The bubble rides her head, so it resizes with her and stays above the name tag.
             var head = P.Head(robot);
-            Assert.Greater(BubbleBottom(head.Find(C.TextName)), head.Find(C.NameTagName).position.y, "bubble above the resized head");
+            Assert.Greater(BubbleBottom(head.Find(C.TextName)), BelowBubble(head), "bubble above the resized head");
         }
         finally
         {
@@ -293,6 +293,11 @@ public class TranslatorPetModelTests
     {
         var head = Head;
         var tag = head.Find(C.NameTagName);
+        if (!C.ShowNameTag)
+        {
+            Assert.IsNull(tag, "off for now (ShowNameTag)");
+            return;
+        }
         Assert.IsNotNull(tag, "on her head, so it moves with her");
         Assert.Greater(tag.position.y, head.position.y + 0.1f, "above the head");
         var mr = tag.GetComponent<MeshRenderer>();
@@ -304,6 +309,11 @@ public class TranslatorPetModelTests
         Assert.AreEqual(C.NameTagWidth, size.x / robotScale, 0.01f);
         Assert.AreEqual(C.NameTagWidth * 256f / 768f, size.y / robotScale, 0.01f, "the picture's shape");
     }
+
+    /// <summary>What the bubble must clear: the name tag's centre, or without it a point 0.2 m (at her scale) above the head bone.</summary>
+    float BelowBubble(Transform head) => C.ShowNameTag
+        ? head.Find(C.NameTagName).position.y
+        : head.position.y + 0.2f * head.lossyScale.y;
 
     /// <summary>Where the shader puts the bubble's bottom: the text quad's origin plus _LiftY of its heights, straight up.</summary>
     static float BubbleBottom(Transform text)
@@ -320,7 +330,7 @@ public class TranslatorPetModelTests
         Assert.IsNotNull(text, "rides her head");
         Assert.IsNull(Find("Pet_Root/Pet_Follow/" + C.TextName), "not the robot's place");
         Assert.Less(Vector3.Distance(head.position, text.position), 1e-4f, "on the head bone itself: nothing to swing round");
-        Assert.Greater(BubbleBottom(text), head.Find(C.NameTagName).position.y, "above the name tag");
+        Assert.Greater(BubbleBottom(text), BelowBubble(head), "above the name tag (or, without it, well above her head)");
         var quad = text.Find(C.KatObjectName + "/" + C.KatConstraintName + "/" + C.KatTextName);
         Assert.IsNotNull(quad, "KAT's own hierarchy, so its clips still find the text");
         var mat = quad.GetComponent<MeshRenderer>().sharedMaterial;

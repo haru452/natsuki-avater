@@ -121,6 +121,11 @@ public static class TranslatorConfig
     public const float NameTagWidth = 0.55f;
     /// <summary>Above the head bone, clearing the hair and halo (metres before the pet's scale).</summary>
     public const float NameTagLift = 0.35f;
+    /// <summary>
+    /// The name tag is off for now: the wearer is taking a photo of Homare for it (put it in NameTagIconSource, run
+    /// Tools/translator/nametag.py, then set this true and Build Prefab). Off, the bubble sits lower, where the tag was.
+    /// </summary>
+    public const bool ShowNameTag = false;
     /// <summary>The chat bubble's bottom, this far above the name tag's centre (metres before the pet's scale).</summary>
     public const float ChatBubbleLift = 0.10f;
     public const float BlinkSeconds = 4f;

@@ -12,8 +12,14 @@ public static class TranslatorChatBubble
     public const string ShaderName = "Translator/KATChatBubble";
     public const string LiftProperty = "_LiftY";
 
-    /// <summary>The bubble's bottom above the head bone, in text-quad heights: NameTagLift + ChatBubbleLift at her scale.</summary>
-    public static float Lift => (C.NameTagLift + C.ChatBubbleLift) / C.TextSize.y;
+    /// <summary>
+    /// The bubble's bottom above the head bone, in text-quad heights: above the name tag (NameTagLift + ChatBubbleLift),
+    /// or without the tag where its bottom edge would be (clear of the hair and halo), both at her scale.
+    /// </summary>
+    public static float Lift => (C.ShowNameTag ? C.NameTagLift + C.ChatBubbleLift : NoTagLift) / C.TextSize.y;
+
+    /// <summary>Where the name tag's bottom edge sits (its centre at NameTagLift, the picture 768 x 256).</summary>
+    const float NoTagLift = C.NameTagLift - C.NameTagWidth * 256f / 768f / 2f;
 
     /// <summary>KAT's text material (its letters and layout) on the bubble shader.</summary>
     public static Material Material(string outputDir)

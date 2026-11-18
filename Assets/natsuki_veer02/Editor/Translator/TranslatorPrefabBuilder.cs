@@ -67,7 +67,7 @@ public static class TranslatorPrefabBuilder
             {
                 head = TranslatorPetModel.Head(robot.transform);
                 TranslatorReactionsBuilder.AddPatZone(head, new Vector3(0, 0.08f, 0));
-                TranslatorNameTag.Add(head, robot.transform, outputDir);
+                if (C.ShowNameTag) TranslatorNameTag.Add(head, robot.transform, outputDir);
                 TranslatorReactionsBuilder.AddHeadLook(head, robot.transform, gaze.transform);
             }
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);
