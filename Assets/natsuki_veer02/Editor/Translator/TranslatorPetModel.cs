@@ -111,6 +111,11 @@ public static class TranslatorPetModel
         var idleClip = Body(Bake(Load(C.PetIdleClip), model, M.RobotPath), Pose.Wait, loop: true);
         var idle = State(sm, "Idle", 100, idleClip, outputDir);
         var walk = State(sm, "Walk", 200, Body(walkBody, Pose.Walk, loop: true), outputDir);
+        // Run: while the wearer runs; the motion keeps pace with them, and RunPull keeps her close.
+        var run = State(sm, "Run", 220, Body(Bake(Load(C.PetRunClip), model, M.RobotPath, inPlace: true), Pose.Run, loop: true), outputDir);
+        run.speedParameterActive = true;
+        run.speedParameter = C.VelocityParam;
+        run.speed = 1f / C.RunClipSpeed;
         var approach = State(sm, "Approach", 250, Body(Object.Instantiate(walkBody), Pose.Approach, loop: true), outputDir);
         var landBody = Body(Object.Instantiate(walkBody), Pose.Land, loop: true);
         var land = State(sm, "Land", 270, landBody, outputDir);
@@ -147,6 +152,8 @@ public static class TranslatorPetModel
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepStillSpeed, C.VelocityParam);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepVoiceLevel, C.VoiceParam);
         Go(walk, approach, Turn).AddCondition(AnimatorConditionMode.Less, C.HopStopSpeed, C.VelocityParam);
+        Go(walk, run, Turn).AddCondition(AnimatorConditionMode.Greater, C.RunStartSpeed, C.VelocityParam);
+        Go(run, walk, Turn).AddCondition(AnimatorConditionMode.Less, C.RunStopSpeed, C.VelocityParam);
         Go(approach, walk, Turn).AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
         Go(approach, land, 0.1f).AddCondition(AnimatorConditionMode.If, 0f, C.ArrivedParam);
         Go(land, idle, 0.2f, exitTime: C.LandSeconds / landBody.length);
@@ -185,7 +192,7 @@ public static class TranslatorPetModel
     /// <summary>Blend into and out of sitting.</summary>
     const float SitDown = 0.6f;
 
-    enum Pose { Walk, Approach, Land, Wait }
+    enum Pose { Walk, Run, Approach, Land, Wait }
 
     /// <summary>
     /// A baked motion plus where the pet goes and which way it faces: the waiting spot (all axes; the heading
@@ -194,12 +201,12 @@ public static class TranslatorPetModel
     static AnimationClip Body(AnimationClip clip, Pose pose, bool loop)
     {
         float end = Mathf.Max(clip.length, 1f / Fps);
-        M.SetHeadingWeight(clip, pose == Pose.Walk ? C.PetModelHeadingWeight : 0f, end);
+        M.SetHeadingWeight(clip, pose is Pose.Walk or Pose.Run ? C.PetModelHeadingWeight : 0f, end);
         M.SetTarget(clip, AnimationCurve.Constant(0f, end, C.PetOffset.z), end);
-        bool going = pose is Pose.Walk or Pose.Approach or Pose.Land;
-        bool spotFollows = pose is Pose.Walk or Pose.Approach;
+        bool going = pose is Pose.Walk or Pose.Run or Pose.Approach or Pose.Land;
+        bool spotFollows = pose is Pose.Walk or Pose.Run or Pose.Approach;
         TranslatorPetWalker.SetBody(clip, end, spot: going ? 1f : 0f, ahead: going ? 0f : 1f,
-            spotFollows: spotFollows ? 1000f : 0f, pull: pose == Pose.Land ? C.LandPull : 0f);
+            spotFollows: spotFollows ? 1000f : 0f, pull: pose == Pose.Land ? C.LandPull : pose == Pose.Run ? C.RunPull : 0f);
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
         settings.loopTime = loop;
         AnimationUtility.SetAnimationClipSettings(clip, settings);
@@ -214,7 +221,8 @@ public static class TranslatorPetModel
     public const string SideLayerName = "Translator_Side";
 
     /// <param name="ground">lower the hips so the lowest point of the model (in the first frame) touches the floor</param>
-    public static AnimationClip Bake(AnimationClip source, GameObject model, string robotPath, bool ground = false)
+    /// <param name="inPlace">take out the hips' drift over the loop (a motion that moves forward plays on the spot)</param>
+    public static AnimationClip Bake(AnimationClip source, GameObject model, string robotPath, bool ground = false, bool inPlace = false)
     {
         var temp = (GameObject)Object.Instantiate(model);
         temp.hideFlags = HideFlags.HideAndDontSave;
@@ -240,6 +248,12 @@ public static class TranslatorPetModel
                     rot[b][f] = q;
                 }
                 if (hips != null) hipPos[f] = hips.localPosition;
+            }
+            if (inPlace && hips != null)
+            {
+                var drift = hipPos[frames - 1] - hipPos[0];
+                // (A looping motion ends where it starts, so all of the difference is drift, whatever the armature's axes.)
+                for (int f = 0; f < frames; f++) hipPos[f] -= drift * ((float)f / (frames - 1));
             }
             if (ground && hips != null)
             {

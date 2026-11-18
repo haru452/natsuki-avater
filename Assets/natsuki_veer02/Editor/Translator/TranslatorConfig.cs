@@ -135,7 +135,8 @@ public static class TranslatorConfig
     public const string FollowWeightProperty = "Sources.source1.Weight";
 
     // Teleport: a contact on Pet_Target notices when the pet is this far behind, and the pet snaps over.
-    public const float CatchUpDistance = 8f;
+    /// <summary>Far enough that running (the humanoid keeps up, RunPull) never sets it off; it is for teleports.</summary>
+    public const float CatchUpDistance = 12f;
     public const string NearParam = "TranslatorPetNear";
     public const string PetContactTag = "TranslatorPetHome";
     public const float PetSenderRadius = 0.05f;
@@ -180,6 +181,18 @@ public static class TranslatorConfig
     public const string VelocityParam = "VelocityMagnitude";
     public const float HopStartSpeed = 0.5f;
     public const float HopStopSpeed = 0.3f;
+    // The humanoid runs while the wearer runs (VRChat: walking about 2 m/s, running about 4).
+    /// <summary>A humanoid running motion (VRChat's own until one of her own is set here); it plays in place.</summary>
+    public const string PetRunClip = "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_run_forward.anim";
+    public const float RunStartSpeed = 3f;
+    public const float RunStopSpeed = 2.5f;
+    /// <summary>The wearer's speed at which the run motion plays at its own pace (it plays faster or slower with them).</summary>
+    public const float RunClipSpeed = 4f;
+    /// <summary>
+    /// Extra pull toward her spot while running (per frame, against her own pose; walking has none), so she keeps
+    /// up at the wearer's speed, about a metre behind, instead of falling back until the catch-up snaps her over.
+    /// </summary>
+    public const float RunPull = 0.15f;
     public const float HopHeight = 0.12f;
     public const float HopSeconds = 0.4f;
     /// <summary>Scale on landing (wide and flat) and at the top of the hop (tall and thin).</summary>
