@@ -270,7 +270,7 @@ static class Program
 /// <summary>Gemini over HTTPS. The key goes only in the x-goog-api-key header.</summary>
 static class GeminiHttp
 {
-    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) }; // a slow model gives way to the next (PetChat)
 
     public static (int Status, string Json) Call(string url, string? body, string key)
     {

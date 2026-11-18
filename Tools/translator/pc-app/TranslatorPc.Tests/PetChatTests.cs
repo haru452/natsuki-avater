@@ -8,6 +8,7 @@ public class GeminiTests
       {"name":"models/gemini-2.5-flash","supportedGenerationMethods":["generateContent","countTokens"]},
       {"name":"models/gemini-3.6-flash","supportedGenerationMethods":["generateContent"]},
       {"name":"models/gemini-3.8-flash-lite","supportedGenerationMethods":["generateContent"]},
+      {"name":"models/gemini-3.8-flash-lite-tts","supportedGenerationMethods":["generateContent"]},
       {"name":"models/gemini-3.8-flash-preview-tts","supportedGenerationMethods":["generateContent"]},
       {"name":"models/gemini-3.8-flash-image","supportedGenerationMethods":["generateContent"]},
       {"name":"models/gemini-3.8-pro","supportedGenerationMethods":["generateContent"]},
@@ -16,12 +17,15 @@ public class GeminiTests
     ]}
     """;
 
+    // Short replies need no big model: the plain Flash models were all busy (503) when tried, Flash-Lite answered in 1 s.
     [Fact]
-    public void PicksTheNewestPlainFlashModel() => Assert.Equal("models/gemini-3.10-flash", Gemini.PickModel(Models));
+    public void Candidates_LiteFirst_NewestFirst_ThenFlash() =>
+        Assert.Equal(new[] { "models/gemini-3.8-flash-lite", "models/gemini-3.10-flash", "models/gemini-3.6-flash", "models/gemini-2.5-flash" },
+            Gemini.Candidates(Models));
 
     [Fact]
     public void NoFlashModel_IsAnError() =>
-        Assert.Throws<PetChatException>(() => Gemini.PickModel("{\"models\":[{\"name\":\"models/x\",\"supportedGenerationMethods\":[]}]}"));
+        Assert.Throws<PetChatException>(() => Gemini.Candidates("{\"models\":[{\"name\":\"models/x\",\"supportedGenerationMethods\":[]}]}"));
 
     [Fact]
     public void Body_HasHerCharacter_TheTalkSoFar_AndWhatWasJustSaid()
@@ -74,13 +78,60 @@ public class PetChatTests
     readonly List<(string Url, string? Body)> requests = new();
     string key = "k";
     int status = 200;
+    /// <summary>Per model: what it answers (a status, or "timeout").</summary>
+    readonly Dictionary<string, string> broken = new();
+    string models = "{\"models\":[{\"name\":\"models/gemini-3.6-flash\",\"supportedGenerationMethods\":[\"generateContent\"]}]}";
 
     PetChat Make() => new(() => key, (url, body) =>
     {
         requests.Add((url, body));
-        if (body == null) return (200, "{\"models\":[{\"name\":\"models/gemini-3.6-flash\",\"supportedGenerationMethods\":[\"generateContent\"]}]}");
+        if (body == null) return (200, models);
+        foreach (var (model, how) in broken)
+            if (url.Contains("/" + model + ":"))
+            {
+                if (how == "timeout") throw new TaskCanceledException();
+                return (int.Parse(how), "{}");
+            }
         return (status, "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Reply " + requests.Count + "\"}]}}]}");
     });
+
+    const string ThreeModels = "{\"models\":["
+        + "{\"name\":\"models/gemini-3.1-flash-lite\",\"supportedGenerationMethods\":[\"generateContent\"]},"
+        + "{\"name\":\"models/gemini-3.5-flash-lite\",\"supportedGenerationMethods\":[\"generateContent\"]},"
+        + "{\"name\":\"models/gemini-3.8-flash\",\"supportedGenerationMethods\":[\"generateContent\"]}]}";
+
+    [Fact]
+    public void ABusyOrMissingModel_GivesWayToTheNext_WhichIsKept()
+    {
+        models = ThreeModels;
+        broken["gemini-3.5-flash-lite"] = "503";
+        broken["gemini-3.1-flash-lite"] = "timeout";
+        var chat = Make();
+        Assert.StartsWith("Reply", chat.Reply("ちゃん、元気？"));
+        Assert.Equal("gemini-3.8-flash", chat.Model);
+        int before = requests.Count;
+        chat.Reply("ちゃん、おはよう");
+        Assert.Equal(before + 1, requests.Count);
+        Assert.Contains("gemini-3.8-flash:", requests[^1].Url);
+    }
+
+    [Fact]
+    public void AllBusy_SaysSo()
+    {
+        models = ThreeModels;
+        foreach (var m in new[] { "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash" }) broken[m] = "503";
+        var e = Assert.Throws<PetChatException>(() => Make().Reply("ちゃん"));
+        Assert.Contains("混んで", e.Message);
+    }
+
+    [Fact]
+    public void AWrongKey_IsNotTriedOnEveryModel()
+    {
+        models = ThreeModels;
+        status = 403;
+        Assert.Throws<PetChatException>(() => Make().Reply("ちゃん"));
+        Assert.Equal(2, requests.Count); // the list, and one model
+    }
 
     [Fact]
     public void FindsTheModelOnce_ThenReplies_RememberingTheTalk()

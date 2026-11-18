@@ -36,23 +36,26 @@ public static class Gemini
     public static string ReplyUrl(string model) => Base + model + ":generateContent";
 
     /// <summary>
-    /// The newest plain Flash model ("models/gemini-3.6-flash"; not lite, preview, TTS, image or embedding): model names
-    /// change every few months, so it is looked up rather than written in.
+    /// The models to try, in order: plain Flash-Lite newest first, then plain Flash newest first (not preview, TTS, image or
+    /// embedding). Short replies need no big model: when first tried, every plain Flash was busy (503) while Flash-Lite
+    /// answered in about a second. Model names change every few months, so they are looked up rather than written in.
     /// </summary>
-    public static string PickModel(string listJson)
+    public static List<string> Candidates(string listJson)
     {
-        var plain = new Regex(@"^models/gemini-(\d+)\.(\d+)-flash$");
-        var best = JsonNode.Parse(listJson)?["models"]?.AsArray()
-            .Select(m => (Name: m?["name"]?.GetValue<string>() ?? "",
-                Methods: m?["supportedGenerationMethods"]?.AsArray().Select(x => x?.GetValue<string>()).ToList() ?? new()))
-            .Where(m => m.Methods.Contains("generateContent"))
-            .Select(m => (m.Name, Match: plain.Match(m.Name)))
-            .Where(m => m.Match.Success)
-            .OrderByDescending(m => int.Parse(m.Match.Groups[1].Value))
-            .ThenByDescending(m => int.Parse(m.Match.Groups[2].Value))
-            .Select(m => m.Name)
-            .FirstOrDefault();
-        return best ?? throw new PetChatException("Gemini で使える Flash モデルが見つかりません");
+        var names = JsonNode.Parse(listJson)?["models"]?.AsArray()
+            .Where(m => m?["supportedGenerationMethods"]?.AsArray().Any(x => x?.GetValue<string>() == "generateContent") == true)
+            .Select(m => m?["name"]?.GetValue<string>() ?? "")
+            .ToList() ?? new();
+        List<string> Newest(string suffix)
+        {
+            var plain = new Regex(@"^models/gemini-(\d+)\.(\d+)" + suffix + "$");
+            return names.Select(n => (Name: n, Match: plain.Match(n))).Where(m => m.Match.Success)
+                .OrderByDescending(m => int.Parse(m.Match.Groups[1].Value))
+                .ThenByDescending(m => int.Parse(m.Match.Groups[2].Value))
+                .Select(m => m.Name).ToList();
+        }
+        var all = Newest("-flash-lite").Concat(Newest("-flash")).ToList();
+        return all.Count > 0 ? all : throw new PetChatException("Gemini で使える Flash モデルが見つかりません");
     }
 
     public static string Body(IEnumerable<(bool Her, string Text)> history, string said)
@@ -116,7 +119,7 @@ public static class Gemini
     };
 }
 
-/// <summary>Her side of the talk: finds the model once, remembers the last few exchanges.</summary>
+/// <summary>Her side of the talk: finds the models once, keeps the one that answers, remembers the last few exchanges.</summary>
 public class PetChat : IPetChat
 {
     public const int KeepExchanges = 6;
@@ -125,7 +128,8 @@ public class PetChat : IPetChat
     readonly Func<string, string?, (int Status, string Json)> http;
     readonly List<(bool Her, string Text)> history = new();
     readonly object gate = new();
-    string? model;
+    List<string>? models;
+    int current;
 
     /// <param name="http">GET (body null) or POST to Gemini with the key, returning the status and the answer</param>
     public PetChat(Func<string> key, Func<string, string?, (int Status, string Json)> http)
@@ -134,23 +138,34 @@ public class PetChat : IPetChat
         this.http = http;
     }
 
-    /// <summary>The model in use ("gemini-3.6-flash"), once found.</summary>
-    public string? Model => model?.Replace("models/", "");
+    /// <summary>The model in use ("gemini-3.1-flash-lite"), once found.</summary>
+    public string? Model => models?[current].Replace("models/", "");
 
     public string Reply(string said)
     {
         if (key().Trim().Length == 0) throw new PetChatException("Gemini のキーがありません（G キーで入れてください）");
         lock (gate)
         {
-            if (model == null)
+            if (models == null)
             {
                 var (listStatus, list) = http(Gemini.ListUrl, null);
                 if (listStatus != 200) throw new PetChatException(Gemini.Problem(listStatus));
-                model = Gemini.PickModel(list);
+                models = Gemini.Candidates(list);
+                current = 0;
             }
-            var (status, json) = http(Gemini.ReplyUrl(model), Gemini.Body(history, said));
-            if (status != 200) throw new PetChatException(Gemini.Problem(status));
-            var reply = Gemini.ForPet(Gemini.Parse(json));
+            var body = Gemini.Body(history, said);
+            string? json = null;
+            int status = 0;
+            // A busy, missing or slow model gives way to the next; the one that answers is kept for next time.
+            for (int tried = 0; tried < models.Count; tried++, current = (current + 1) % models.Count)
+            {
+                try { (status, json) = http(Gemini.ReplyUrl(models[current]), body); }
+                catch (TaskCanceledException) { status = 504; continue; }
+                if (status == 200) break;
+                if (status is 400 or 401 or 403) throw new PetChatException(Gemini.Problem(status)); // the key, not the model
+            }
+            if (status != 200) throw new PetChatException(status is 429 or 503 or 504 ? Gemini.Problem(429) : Gemini.Problem(status));
+            var reply = Gemini.ForPet(Gemini.Parse(json!));
             if (reply.Length == 0) throw new PetChatException("Gemini の返事が表示できない文字だけでした");
             history.Add((false, said));
             history.Add((true, reply));
