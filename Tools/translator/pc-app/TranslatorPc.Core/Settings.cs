@@ -15,6 +15,11 @@ public class Settings
     public DisplayMode Display { get; set; } = DisplayMode.KAT;
     public int KatSync { get; set; } = 8;
     /// <summary>Saying one of these makes the pet turn and smile (PetCall): Homare (誉) and Natsuki.</summary>
+    /// <summary>
+    /// Other players' voices on the phone: false (for now) shows what they said as it is, in every language;
+    /// true translates what is not Japanese into Japanese with DeepL (Japanese is never sent).
+    /// </summary>
+    public bool TranslateOthers { get; set; } = false;
     public List<string> PetNames { get; set; } = new() { "ほまれ", "誉", "homare", "なつき", "natsuki" };
     /// <summary>Phrases for Sit / Wait / Come / Stand, said after her name (PetCommands; hiragana, Japanese only).</summary>
     public Dictionary<string, List<string>> PetCommandWords { get; set; } = PetCommands.Defaults();

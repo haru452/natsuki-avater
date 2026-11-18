@@ -1,4 +1,5 @@
-// The page the phone opens (http://<PC>:8765/): newest line on top, the Japanese large, what was said small.
+// The page the phone opens (http://<PC>:8765/): newest line on top; the translation large and what was said small,
+// or (not translating) what was said, large.
 namespace TranslatorPc.Core;
 
 public static class OthersPage
@@ -26,8 +27,8 @@ public static class OthersPage
 </style>
 </head>
 <body>
-<header><span>相手の声（日本語に訳したもの）</span><span id="state">つないでいます…</span></header>
-<main id="list"><div class="empty">ほかの人が日本語以外で話すと、ここに出ます。</div></main>
+<header><span>相手の声</span><span id="state">つないでいます…</span></header>
+<main id="list"><div class="empty">ほかの人が話すと、ここに出ます。</div></main>
 <script>
   let after = 0;
   const list = document.getElementById('list');
@@ -39,13 +40,13 @@ public static class OthersPage
     div.className = 'line';
     const ja = document.createElement('div');
     ja.className = 'ja';
-    ja.textContent = l.translation;
+    ja.textContent = l.translation || l.original;
     const orig = document.createElement('div');
     orig.className = 'orig';
     const meta = document.createElement('span');
     meta.className = 'meta';
     meta.textContent = l.time + ' ' + l.lang;
-    orig.append(meta, document.createTextNode(l.original));
+    orig.append(meta, document.createTextNode(l.translation ? l.original : ''));
     div.append(ja, orig);
     list.prepend(div);
     while (list.children.length > 50) list.lastChild.remove();

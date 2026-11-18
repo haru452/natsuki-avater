@@ -27,7 +27,27 @@ public class OthersVoiceTests
     readonly OthersFeed feed = new(() => new DateTime(2026, 11, 18, 21, 5, 0));
     double now;
 
-    OthersVoice Make() => new(stt, translator, feed, () => now, said.Add) { Listening = true };
+    bool translate = true;
+
+    OthersVoice Make() => new(stt, translator, feed, () => now, said.Add, () => translate) { Listening = true };
+
+    [Theory]
+    [InlineData(Lang.EN, "Nice to meet you")]
+    [InlineData(Lang.JA, "こんにちは")]
+    public void NotTranslating_ShowsWhatWasSaid_InEveryLanguage_WithoutDeepL(Lang lang, string text)
+    {
+        translate = false;
+        stt.Answer = new(lang, text, true);
+        var v = Make();
+        Speak(v);
+        v.ProcessNext(0);
+        Assert.Empty(translator.Calls);
+        var line = feed.Since(0).Single();
+        Assert.Equal((lang, text, ""), (line.Lang, line.Original, line.Translation));
+    }
+
+    [Fact]
+    public void ForNow_OthersAreNotTranslated() => Assert.False(new Settings().TranslateOthers);
 
     static readonly List<short[]> Sentence =
         SegmenterTests.Frames(1, 0).Concat(SegmenterTests.Frames(1, 6000)).Concat(SegmenterTests.Frames(1.5, 0)).ToList();

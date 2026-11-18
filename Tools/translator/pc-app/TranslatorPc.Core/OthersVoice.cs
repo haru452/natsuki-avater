@@ -1,5 +1,6 @@
-// Other players' voices (VRChat's sound): recognized on the PC, Japanese skipped, the rest translated into
-// Japanese by DeepL and shown on the phone's page (OthersFeed). Nothing is written to disk.
+// Other players' voices (VRChat's sound): recognized on the PC and shown on the phone's page (OthersFeed) as they
+// were said; or, with translate on, what is not Japanese is translated into Japanese by DeepL (Japanese skipped).
+// Nothing is written to disk.
 using System.Collections.Concurrent;
 
 namespace TranslatorPc.Core;
@@ -17,11 +18,15 @@ public class OthersVoice
     readonly OthersFeed feed;
     readonly Func<double> clock;
     readonly Action<string> say;
+    readonly Func<bool> translate;
     readonly object gate = new();
     bool listening;
 
-    public OthersVoice(IRecognizer stt, ITranslator translator, OthersFeed feed, Func<double> clock, Action<string> say)
+    /// <param name="translate">Settings.TranslateOthers, read for each sentence (null: as it was said)</param>
+    public OthersVoice(IRecognizer stt, ITranslator translator, OthersFeed feed, Func<double> clock, Action<string> say,
+        Func<bool>? translate = null)
     {
+        this.translate = translate ?? (() => false);
         this.stt = stt;
         this.translator = translator;
         this.feed = feed;
@@ -69,6 +74,13 @@ public class OthersVoice
     {
         var heard = stt.Recognize(pcm);
         if (!heard.IsSpeech || heard.Lang == Lang.NONE || string.IsNullOrWhiteSpace(heard.Text)) return;
+        if (!translate())
+        {
+            // As it was said: no DeepL.
+            feed.Add(heard.Lang, heard.Text.Trim(), "");
+            say($"相手の声（{heard.Lang}）: {heard.Text.Trim()}");
+            return;
+        }
         if (heard.Lang == Lang.JA) return; // Japanese needs no translating (and is not sent to DeepL)
         string translation;
         try

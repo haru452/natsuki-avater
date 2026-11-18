@@ -71,7 +71,7 @@ static class Program
         var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say, petCall);
         // Other players' voices, translated into Japanese on the phone's page, only while the page is open.
         var feed = new OthersFeed(() => DateTime.Now);
-        var others = new OthersVoice(auto, deepl, feed, Now, screen.Say);
+        var others = new OthersVoice(auto, deepl, feed, Now, screen.Say, () => settings.TranslateOthers);
         string phoneUrl = PhoneServer.Url() ?? "（ネットワークが見つかりません）";
         PhoneServer? phoneServer = null;
         try { phoneServer = new PhoneServer(feed); }
@@ -123,7 +123,9 @@ static class Program
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),
                     "音声認識:    " + (reazon != null ? "SenseVoice + 日本語は ReazonSpeech" : "SenseVoice"),
                     "声の保存:    " + (recorder.On ? $"オン（{recorder.Saved} 文、{SampleRecorder.Dir}）" : "オフ"),
-                    "相手の声:    " + (phoneOpen ? "訳しています（スマホに表示中・日本語は訳しません）" : "スマホで開くと訳します: " + phoneUrl),
+                    "相手の声:    " + (phoneOpen
+                        ? (settings.TranslateOthers ? "スマホに表示中（日本語以外を DeepL で訳しています）" : "スマホに表示中（話したそのまま）")
+                        : "スマホで開くと出します: " + phoneUrl),
                     "VRChat の音: " + vrchatSound.State,
                     $"CPU:         {cpu.Percent():0.0} %",
                 });
