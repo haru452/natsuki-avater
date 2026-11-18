@@ -10,8 +10,8 @@ public class KatDisplayTests
 
     public KatDisplayTests() => d = New(DisplayMode.KAT, false);
 
-    KatDisplay New(DisplayMode mode, bool showOriginal, Action<byte[]>? send = null, Action<string>? onEvent = null) =>
-        new(send ?? (p => packets.Add(Osc.Parse(p))), mode, 8, showOriginal, () => now, onEvent: onEvent);
+    KatDisplay New(DisplayMode mode, bool showOriginal, Action<byte[]>? send = null, Action<string>? onEvent = null, double hold = 0) =>
+        new(send ?? (p => packets.Add(Osc.Parse(p))), mode, 8, showOriginal, () => now, onEvent: onEvent, holdSeconds: hold);
 
     List<(string Address, object[] Args)> Take() { var t = packets; packets = new(); return t; }
 
@@ -66,6 +66,38 @@ public class KatDisplayTests
         var again = Take();
         Assert.NotEmpty(again);
         Assert.DoesNotContain(again, IsClear);
+    }
+
+    [Fact]
+    public void TheTextIsTakenDown_AWhileAfterItIsUp()
+    {
+        var held = New(DisplayMode.KAT, false, hold: 10);
+        held.Show(JaResult);
+        Run(held, 1.5);
+        Take();
+        Run(held, 7.5);
+        Assert.DoesNotContain(Take(), IsClear); // still up (rewritten, not cleared) at 9 s
+        Run(held, 3.0); // the 10 s count from when the text was fully written (about 1 s in)
+        var later = Take();
+        Assert.Contains(later, IsClear);
+        Assert.Empty(KatText(later));
+        Run(held, 3.0);
+        Assert.Empty(Take()); // and nothing more until the next answer
+        held.Show(JaResult);
+        Run(held, 1.5);
+        Assert.Equal(16, KatText(Take()).Count);
+    }
+
+    [Fact]
+    public void LongText_HoldsAfterItsLastPage()
+    {
+        var held = New(DisplayMode.KAT, false, hold: 3);
+        held.Show(R("ja", "x", string.Join(" ", Enumerable.Repeat("word", 40)), "x"));
+        Run(held, 4.5);
+        Run(held, 4.0);
+        Assert.Single(Take(), IsClear); // only the first page's own clear: the second page has not been up 3 s yet
+        Run(held, 6.0);
+        Assert.Contains(Take(), IsClear);
     }
 
     // A cell that caught a wrong character ("it" showed as "iふ") is rewritten within about a second.

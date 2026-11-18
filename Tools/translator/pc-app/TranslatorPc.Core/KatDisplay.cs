@@ -18,6 +18,7 @@ public interface IDisplay
 /// every resendSeconds (1 s) so late joiners get all of it and a cell that caught a wrong character in passing
 /// ("it" showed as "iふ") is put right; long text turns pages pageSeconds after a page is written.
 /// An answer on screen is never cut short: "...", errors and clears wait, and a newer answer queues behind it.
+/// Its last page stays up holdSeconds after it is written, then the text is cleared (0: until the next answer).
 /// Not thread-safe: call it under one lock.
 /// </summary>
 public class KatDisplay : IDisplay
@@ -30,7 +31,7 @@ public class KatDisplay : IDisplay
     readonly int sync;
     readonly bool showOriginal;
     readonly Func<double> clock;
-    readonly double pageSeconds, resendSeconds, stepSeconds, errorSeconds;
+    readonly double pageSeconds, resendSeconds, stepSeconds, errorSeconds, holdSeconds;
     readonly Action<string> onEvent;
     readonly bool katMode, chatboxMode;
 
@@ -39,13 +40,16 @@ public class KatDisplay : IDisplay
     List<string> pages = new();
     int page;
     double? writtenAt;
+    /// <summary>When the last page was first written (resends leave it be): the hold counts from here.</summary>
+    double? lastPageSince;
     double? errorUntil;
     List<List<string>> backlog = new();
 
     public KatDisplay(Action<byte[]> send, DisplayMode mode, int sync, bool showOriginal, Func<double> clock,
         double pageSeconds = 5, double resendSeconds = 1, double stepSeconds = 0.25, double errorSeconds = 3,
-        Action<string>? onEvent = null)
+        Action<string>? onEvent = null, double holdSeconds = 0)
     {
+        this.holdSeconds = holdSeconds;
         this.send = send;
         this.sync = sync;
         this.showOriginal = showOriginal;
@@ -168,7 +172,11 @@ public class KatDisplay : IDisplay
                 bool isClear = group.Count == 1 && first.Address == Core.Kat.Pointer && first.Args[0] is int p && p == Core.Kat.ClearPointer;
                 bool isChars = first.Address != Core.Kat.Pointer;
                 next = now + stepSeconds * (isClear ? 2 : 1) - (isChars ? PointerSeconds : 0);
-                if (queue.Count == 0) writtenAt = now;
+                if (queue.Count == 0)
+                {
+                    writtenAt = now;
+                    if (pages.Count > 0 && page == pages.Count - 1) lastPageSince ??= now;
+                }
             }
             return;
         }
@@ -189,6 +197,13 @@ public class KatDisplay : IDisplay
         else if (backlog.Count > 0)
         {
             if (now - written >= pageSeconds) { var b = backlog[0]; backlog.RemoveAt(0); Start(b); }
+        }
+        else if (holdSeconds > 0 && lastPageSince is double since && now - since >= holdSeconds)
+        {
+            // Up long enough: take it down (until the next answer).
+            Reset();
+            queue = new() { new() { Osc.Message(Core.Kat.Pointer, Core.Kat.ClearPointer) } };
+            next = now;
         }
         else if (now - written >= resendSeconds) Write(pages[page], clear: false);
     }
@@ -216,6 +231,7 @@ public class KatDisplay : IDisplay
         pages = new();
         page = 0;
         writtenAt = null;
+        lastPageSince = null;
         errorUntil = null;
     }
 

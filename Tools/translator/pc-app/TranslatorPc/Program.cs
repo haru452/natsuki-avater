@@ -65,7 +65,8 @@ static class Program
 
         var clock = Stopwatch.StartNew();
         double Now() => clock.Elapsed.TotalSeconds;
-        var display = new KatDisplay(Send, settings.Display, settings.KatSync, settings.ShowOriginal, Now, onEvent: screen.Say);
+        var display = new KatDisplay(Send, settings.Display, settings.KatSync, settings.ShowOriginal, Now, onEvent: screen.Say,
+            holdSeconds: settings.KatHoldSeconds);
         var log = new TranslationLog(Path.Combine(DataDir, "translation_log.tsv"));
         var petCall = new PetCall(Send, Now);
         var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say, petCall);

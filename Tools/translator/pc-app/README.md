@@ -43,6 +43,8 @@ PC のマイク → 音声認識（SenseVoice、日本語は ReazonSpeech で聞
 言い方は `settings.json` の `PetCommandWords` で足したり消したりできます（ひらがなで書く）。
 確かめ方: `translator_pc.exe --test-command "誉、座って" "誉、待っててね"`（読みと、名前・命令が聞き取れたかを表示）
 
+ペットの上の字幕は、出しきってから **10 秒** で消えます（`settings.json` の `KatHoldSeconds` で秒数を変えられます。0 にすると次の文まで出たまま）。
+
 キー: **K** = DeepL のキー、**L** = 相手の言語（英語 / 中国語）、**R** = 声の保存（オン / オフ）、**Ctrl+C** = 終わる。
 
 声の保存をオンにしているあいだだけ、話した 1 文ごとの音声を `%APPDATA%\VRCTranslatorPC\samples\` に WAV で保存します

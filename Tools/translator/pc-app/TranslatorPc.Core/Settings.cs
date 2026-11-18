@@ -14,6 +14,8 @@ public class Settings
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public DisplayMode Display { get; set; } = DisplayMode.KAT;
     public int KatSync { get; set; } = 8;
+    /// <summary>Seconds the pet's text stays up after its last page is written, then it is cleared (0: until the next).</summary>
+    public double KatHoldSeconds { get; set; } = 10;
     /// <summary>Saying one of these makes the pet turn and smile (PetCall): Homare (誉) and Natsuki.</summary>
     /// <summary>
     /// Other players' voices on the phone: false (for now) shows what they said as it is, in every language;
