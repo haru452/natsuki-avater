@@ -13,7 +13,7 @@ using M = TranslatorMotionBuilder;
 using P = TranslatorPetModel;
 
 /// <summary>
-/// The pet as a humanoid model (Muryotaisu): walks and idles with its own motions baked to plain bone animation,
+/// The pet as a humanoid model (TranslatorConfig.Pet): walks and idles with its own motions baked to plain bone animation,
 /// gets bored (IdleB) after a still, silent minute, jumps when the wearer comes back, smiles with hearts when petted,
 /// and is sized to 0.6 of the avatar. Skipped when the model is not in the project (the BOOTH robot build).
 /// </summary>
@@ -28,7 +28,7 @@ public class TranslatorPetModelTests
     [OneTimeSetUp]
     public void BuildOnce()
     {
-        model = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Mryotaisu/Models/Muryotaisu.fbx");
+        model = AssetDatabase.LoadAssetAtPath<GameObject>(C.PetModelPath);
         if (model == null) Assert.Ignore("pet model not in this project");
         AssetDatabase.DeleteAsset(Dir);
         AssetDatabase.CreateFolder("Assets", "__TranslatorTest");
@@ -40,6 +40,7 @@ public class TranslatorPetModelTests
     public void CleanUp() => AssetDatabase.DeleteAsset(Dir);
 
     Transform Find(string path) => prefab.transform.Find(path);
+    SkinnedMeshRenderer RobotMesh(string mesh) => Find(RobotPath + "/" + mesh)?.GetComponent<SkinnedMeshRenderer>();
     AnimatorStateMachine Layer(string name) => c.layers.Single(l => l.name == name).stateMachine;
     AnimatorState State(string layer, string name) => Layer(layer).states.Select(s => s.state).Single(s => s.name == name);
     static AnimationClip Clip(AnimatorState s) => (AnimationClip)s.motion;
@@ -57,7 +58,7 @@ public class TranslatorPetModelTests
         Assert.IsEmpty(robot.GetComponentsInChildren<Animator>(true), "no second Animator inside the avatar");
         Assert.IsNull(robot.Find(TranslatorRobotBuilder.HeadPivotName), "robot parts are not built");
         Assert.IsNull(Find("Pet_Root/Pet_Follow/" + C.ZzzName), "no Zzz: this pet does not sleep");
-        Assert.AreEqual("Head", robot.GetComponentsInChildren<Transform>(true).Single(t => t.name == TranslatorReactionsBuilder.PatZoneName).parent.name,
+        Assert.AreEqual(C.Pet.HeadBone, robot.GetComponentsInChildren<Transform>(true).Single(t => t.name == TranslatorReactionsBuilder.PatZoneName).parent.name,
             "petting the head");
     }
 
@@ -125,11 +126,11 @@ public class TranslatorPetModelTests
     {
         var idle = Clip(State(P.BodyLayerName, "Idle"));
         var bindings = AnimationUtility.GetCurveBindings(idle);
-        Assert.IsTrue(bindings.Any(b => b.type == typeof(Transform) && b.path.StartsWith(RobotPath.Substring("Pet_Root/".Length) + "/") && b.path.EndsWith("/Hips")
+        Assert.IsTrue(bindings.Any(b => b.type == typeof(Transform) && b.path.StartsWith(RobotPath.Substring("Pet_Root/".Length) + "/") && b.path.EndsWith("/" + HipsName)
                                         && b.propertyName == "m_LocalRotation.x"), "Hips rotation");
         Assert.IsFalse(bindings.Any(b => b.type == typeof(Animator)), "no humanoid muscle curves");
-        Assert.IsFalse(bindings.Any(b => b.propertyName == "blendShape.Smile"), "smile belongs to petting");
-        Assert.IsFalse(bindings.Any(b => b.propertyName == "blendShape.Blink" || b.propertyName == "blendShape.EyeClose"),
+        Assert.IsFalse(bindings.Any(b => C.Pet.Smile.Any(s => b.propertyName == "blendShape." + s.shape)), "smile belongs to petting");
+        Assert.IsFalse(bindings.Any(b => C.Pet.Blink.Any(s => b.propertyName == "blendShape." + s.shape)),
             "eyelids belong to the blink layer");
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(idle).loopTime);
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(Clip(State(P.BodyLayerName, "Bored"))).loopTime);
@@ -143,13 +144,23 @@ public class TranslatorPetModelTests
 
     // The eye layer owns every eye shape, so the smile can close the eyes (the lashes' smile alone sat over open
     // eyes and looked like eyebrows) without the blink fighting it.
-    static readonly string Lash = M.RobotPath + "/EyeLash";
+    string HipsName => model.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.Hips).name;
+    Transform Head => P.Head(Find(RobotPath));
 
-    float Shape(AnimationClip clip, string mesh, string shape, float t) => AnimationUtility.GetEditorCurve(clip,
-        EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + shape)).Evaluate(t);
+    float Shape(AnimationClip clip, (string mesh, string shape) s, float t) => AnimationUtility.GetEditorCurve(clip,
+        EditorCurveBinding.FloatCurve(M.RobotPath + "/" + s.mesh, typeof(SkinnedMeshRenderer), "blendShape." + s.shape)).Evaluate(t);
+
+    /// <summary>Every smile shape (and every eye shut under it) at t equals expected; the other eyelids stay open.</summary>
+    void Smiling(AnimationClip clip, float t, float expected, string message)
+    {
+        foreach (var s in C.Pet.Smile) Assert.AreEqual(expected, Shape(clip, s, t), 1f, message + " " + s);
+        foreach (var s in C.Pet.ShutUnderSmile) Assert.AreEqual(expected, Shape(clip, s, t), 1f, "eyes closed under the smile " + s);
+        foreach (var s in C.Pet.Blink.Except(C.Pet.ShutUnderSmile)) Assert.AreEqual(0f, Shape(clip, s, t), 1f, "the blink opens " + s);
+        if (C.Pet.Highlight != null) Assert.AreEqual(expected > 50f ? 0f : 1f, Highlight(clip, t), "no highlights floating on closed eyes");
+    }
 
     float Highlight(AnimationClip clip, float t) => AnimationUtility.GetEditorCurve(clip,
-        EditorCurveBinding.FloatCurve(M.RobotPath + "/EyeLight", typeof(SkinnedMeshRenderer), "m_Enabled")).Evaluate(t);
+        EditorCurveBinding.FloatCurve(M.RobotPath + "/" + C.Pet.Highlight, typeof(SkinnedMeshRenderer), "m_Enabled")).Evaluate(t);
 
     [Test]
     public void Look_SmilesForAMoment_EyesClosed_OncePerLook()
@@ -158,16 +169,12 @@ public class TranslatorPetModelTests
         var glance = State(eyes, "Glance");
         var clip = Clip(glance);
         float end = clip.length, mid = end * 0.4f;
-        Assert.AreEqual(0f, Shape(clip, "EyeLash", "Smile", 0f));
-        Assert.AreEqual(100f, Shape(clip, "EyeLash", "Smile", mid), 1f, "smiles");
-        Assert.AreEqual(100f, Shape(clip, "Face", "EyeClose", mid), 1f, "eyes closed under the smile");
-        Assert.AreEqual(100f, Shape(clip, "Eye", "EyeClose", mid), 1f);
-        Assert.AreEqual(0f, Highlight(clip, mid), "no highlights floating on closed eyes");
-        Assert.AreEqual(0f, Shape(clip, "EyeLash", "Smile", end), "and stops");
-        Assert.AreEqual(1f, Highlight(clip, end));
+        Smiling(clip, 0f, 0f, "not yet");
+        Smiling(clip, mid, 100f, "smiles");
+        Smiling(clip, end, 0f, "and stops");
         Assert.GreaterOrEqual(end, 2.4f, "long enough to notice");
         Assert.LessOrEqual(end, 3f, "but not a fixed grin");
-        Assert.AreEqual(100f, Shape(clip, "EyeLash", "Smile", end - 0.5f), 1f, "still smiling near the end");
+        Smiling(clip, end - 0.5f, 100f, "still smiling near the end");
         Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
         StringAssert.StartsWith($"Happy:{C.PatParam}If0 | Glance:{C.LookedParam}If0", Transitions(State(eyes, "Blink")));
         Assert.AreEqual($"Happy:{C.PatParam}If0 | Seen:@1", Transitions(glance));
@@ -178,15 +185,11 @@ public class TranslatorPetModelTests
     public void Pat_SmilesWithEyesClosed_AndHearts()
     {
         var happy = Clip(State(TranslatorPetWalker.BlinkLayerName, "Happy"));
-        Assert.AreEqual(100f, Shape(happy, "EyeLash", "Smile", 0f));
-        Assert.AreEqual(100f, Shape(happy, "Face", "EyeClose", 0f));
-        Assert.AreEqual(100f, Shape(happy, "Eye", "EyeClose", 0f));
-        Assert.AreEqual(0f, Shape(happy, "EyeLash", "Blink", 0f));
-        Assert.AreEqual(0f, Highlight(happy, 0f));
+        Smiling(happy, 0f, 100f, "smiles");
         StringAssert.StartsWith("Blink:" + C.PatParam + "IfNot0", Transitions(State(TranslatorPetWalker.BlinkLayerName, "Happy")));
         var blink = Clip(State(TranslatorPetWalker.BlinkLayerName, "Blink"));
-        Assert.AreEqual(0f, Shape(blink, "EyeLash", "Smile", 0f));
-        Assert.AreEqual(1f, Highlight(blink, 0f));
+        foreach (var s in C.Pet.Smile) Assert.AreEqual(0f, Shape(blink, s, 0f), "no smile " + s);
+        if (C.Pet.Highlight != null) Assert.AreEqual(1f, Highlight(blink, 0f));
         // The pat layer keeps only the hearts.
         Assert.IsFalse(AnimationUtility.GetCurveBindings(Clip(State(M.PatLayerName, "Hearts"))).Any(b => b.propertyName.StartsWith("blendShape.")));
     }
@@ -205,7 +208,7 @@ public class TranslatorPetModelTests
             Assert.AreEqual(0.6f * 1.4f, petEye, 0.01f);
 
             // The bubble rides her head, so it resizes with her and stays above the name tag.
-            var head = robot.GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+            var head = P.Head(robot);
             Assert.Greater(head.Find(C.TextName).position.y, head.Find(C.NameTagName).position.y, "bubble above the resized head");
         }
         finally
@@ -284,7 +287,7 @@ public class TranslatorPetModelTests
     [Test]
     public void NameTag_FloatsAboveHerHead_FacingWhoeverLooks()
     {
-        var head = Find(RobotPath).GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var head = Head;
         var tag = head.Find(C.NameTagName);
         Assert.IsNotNull(tag, "on her head, so it moves with her");
         Assert.Greater(tag.position.y, head.position.y + 0.1f, "above the head");
@@ -301,7 +304,7 @@ public class TranslatorPetModelTests
     [Test]
     public void Subtitle_IsAChatBubbleOverHerHead_FacingWhoeverLooks()
     {
-        var head = Find(RobotPath).GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var head = Head;
         var text = head.Find(C.TextName);
         Assert.IsNotNull(text, "rides her head");
         Assert.IsNull(Find("Pet_Root/Pet_Follow/" + C.TextName), "not the robot's place");
@@ -320,7 +323,7 @@ public class TranslatorPetModelTests
     public void Look_HerHeadTiltsTowardTheWearersFace()
     {
         var robot = Find(RobotPath);
-        var head = robot.GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
+        var head = Head;
         var aim = head.GetComponent<VRCAimConstraint>();
         Assert.IsNotNull(aim, "on the head bone");
         Assert.AreEqual(Find(C.GazeName), aim.Sources[0].SourceTransform, "the wearer's face");
@@ -404,14 +407,18 @@ public class TranslatorPetModelTests
         var clip = Clip(blink);
         Assert.AreEqual(C.BlinkSeconds, clip.length, 1e-3f);
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
-        var lash = AnimationUtility.GetEditorCurve(clip,
-            EditorCurveBinding.FloatCurve(M.RobotPath + "/EyeLash", typeof(SkinnedMeshRenderer), "blendShape.Blink"));
-        Assert.AreEqual(0f, lash.Evaluate(0f), "open most of the time");
-        Assert.AreEqual(0f, lash.Evaluate(C.BlinkSeconds / 2));
-        float peak = Enumerable.Range(0, 400).Max(i => lash.Evaluate(C.BlinkSeconds * i / 400f));
-        Assert.AreEqual(100f, peak, 1f, "closes fully once");
-        foreach (var mesh in new[] { "Face", "Eye" })
-            Assert.IsNotNull(AnimationUtility.GetEditorCurve(clip,
-                EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape.EyeClose")), mesh);
+        foreach (var (mesh, shape) in C.Pet.Blink)
+        {
+            Assert.IsNotNull(RobotMesh(mesh), "the model has " + mesh);
+            Assert.GreaterOrEqual(RobotMesh(mesh).sharedMesh.GetBlendShapeIndex(shape), 0, mesh + " has " + shape);
+            var lid = AnimationUtility.GetEditorCurve(clip,
+                EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + shape));
+            Assert.AreEqual(0f, lid.Evaluate(0f), "open most of the time");
+            Assert.AreEqual(0f, lid.Evaluate(C.BlinkSeconds / 2));
+            float peak = Enumerable.Range(0, 400).Max(i => lid.Evaluate(C.BlinkSeconds * i / 400f));
+            Assert.AreEqual(100f, peak, 1f, "closes fully once");
+        }
+        foreach (var (mesh, shape) in C.Pet.Smile)
+            Assert.GreaterOrEqual(RobotMesh(mesh).sharedMesh.GetBlendShapeIndex(shape), 0, mesh + " has " + shape);
     }
 }

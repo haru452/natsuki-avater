@@ -12,7 +12,6 @@ using M = TranslatorMotionBuilder;
 /// </summary>
 public static class TranslatorPetEyes
 {
-    const string LashMesh = "EyeLash", HighlightMesh = "EyeLight";
     const float GlanceSeconds = 2.5f;
 
     public static void AddLayer(AnimatorStateMachine sm, string outputDir)
@@ -42,22 +41,25 @@ public static class TranslatorPetEyes
     {
         float t = C.BlinkSeconds;
         var clip = new AnimationClip();
-        foreach (var (mesh, shape) in C.PetBlinkShapes)
+        foreach (var (mesh, shape) in C.Pet.Blink)
             Shape(clip, mesh, shape, Linear(new Keyframe(0f, 0f), new Keyframe(t - 0.16f, 0f), new Keyframe(t - 0.09f, 100f),
                 new Keyframe(t - 0.02f, 0f), new Keyframe(t, 0f)));
-        Shape(clip, LashMesh, C.PetSmileShape, AnimationCurve.Constant(0f, t, 0f));
+        foreach (var (mesh, shape) in C.Pet.Smile)
+            Shape(clip, mesh, shape, AnimationCurve.Constant(0f, t, 0f));
         Highlight(clip, AnimationCurve.Constant(0f, t, 1f));
         Loop(clip, true);
         return clip;
     }
 
-    /// <summary>The smile follows amount (0–100): smiling lashes, eyes closed under them, highlights hidden.</summary>
+    /// <summary>The smile follows amount (0–100): the smile shapes, the eyes shut under them, highlights hidden.</summary>
     static AnimationClip Smile(AnimationCurve amount, float seconds)
     {
         var clip = new AnimationClip();
-        foreach (var (mesh, shape) in C.PetBlinkShapes)
-            Shape(clip, mesh, shape, mesh == LashMesh ? AnimationCurve.Constant(0f, seconds, 0f) : amount);
-        Shape(clip, LashMesh, C.PetSmileShape, amount);
+        foreach (var blink in C.Pet.Blink)
+            Shape(clip, blink.mesh, blink.shape,
+                System.Array.IndexOf(C.Pet.ShutUnderSmile, blink) >= 0 ? amount : AnimationCurve.Constant(0f, seconds, 0f));
+        foreach (var (mesh, shape) in C.Pet.Smile)
+            Shape(clip, mesh, shape, amount);
         // Hidden while the eyes are mostly shut (an on/off property: stepped, not blended).
         var on = new AnimationCurve();
         for (float t = 0f; t <= seconds + 1e-4f; t += seconds / 40f) on.AddKey(t, amount.Evaluate(t) > 50f ? 0f : 1f);
@@ -75,9 +77,12 @@ public static class TranslatorPetEyes
         AnimationUtility.SetEditorCurve(clip,
             EditorCurveBinding.FloatCurve(M.RobotPath + "/" + mesh, typeof(SkinnedMeshRenderer), "blendShape." + shape), curve);
 
-    static void Highlight(AnimationClip clip, AnimationCurve curve) =>
+    static void Highlight(AnimationClip clip, AnimationCurve curve)
+    {
+        if (C.Pet.Highlight == null) return;
         AnimationUtility.SetEditorCurve(clip,
-            EditorCurveBinding.FloatCurve(M.RobotPath + "/" + HighlightMesh, typeof(SkinnedMeshRenderer), "m_Enabled"), curve);
+            EditorCurveBinding.FloatCurve(M.RobotPath + "/" + C.Pet.Highlight, typeof(SkinnedMeshRenderer), "m_Enabled"), curve);
+    }
 
     static AnimationCurve Linear(params Keyframe[] keys)
     {

@@ -18,7 +18,7 @@ public static class TranslatorPetModel
 {
     public const string BodyLayerName = "Translator_Body";
     const float Fps = 30f;
-    const string LeftEye = "Left Eye";
+    static string LeftEye => C.Pet.LeftEyeBone;
 
     /// <summary>The configured model, or null for the robot.</summary>
     public static GameObject Configured() =>
@@ -35,6 +35,10 @@ public static class TranslatorPetModel
         go.transform.localRotation = Quaternion.identity;
         go.transform.localScale = Vector3.one;
         foreach (var a in go.GetComponentsInChildren<Animator>(true)) Object.DestroyImmediate(a);
+        // A model made as an avatar of its own (riko2) brings its avatar descriptor: one avatar cannot hold another.
+        foreach (var d in go.GetComponentsInChildren<VRCAvatarDescriptor>(true)) Object.DestroyImmediate(d);
+        foreach (var m in go.GetComponentsInChildren<MonoBehaviour>(true))
+            if (m != null && m.GetType().Name == "PipelineManager") Object.DestroyImmediate(m);
         CopyMaterials(go, AssetDatabase.LoadAssetAtPath<GameObject>(C.PetMaterialSource));
         return go;
     }
@@ -50,7 +54,10 @@ public static class TranslatorPetModel
 
     /// <summary>The model's head bone, as a path from Pet_Root (for the motion clips).</summary>
     public static string HeadPath(GameObject model) =>
-        M.RobotPath + "/" + AnimationUtility.CalculateTransformPath(FindDeep(model.transform, "Head"), model.transform);
+        M.RobotPath + "/" + AnimationUtility.CalculateTransformPath(Head(model.transform), model.transform);
+
+    /// <summary>The model's head bone.</summary>
+    public static Transform Head(Transform model) => FindDeep(model, C.Pet.HeadBone);
 
     public static Transform FindDeep(Transform root, string name) =>
         root.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == name);
@@ -228,7 +235,7 @@ public static class TranslatorPetModel
 
             foreach (var binding in AnimationUtility.GetCurveBindings(source)
                          .Where(b => b.type == typeof(SkinnedMeshRenderer) && b.propertyName.StartsWith("blendShape.")
-                                     && b.propertyName != "blendShape." + C.PetSmileShape && !TranslatorPetWalker.IsBlinkCurve(b)))
+                                     && !IsSmileCurve(b) && !TranslatorPetWalker.IsBlinkCurve(b) && HasShape(temp.transform, b)))
             {
                 var copy = binding;
                 copy.path = robotPath + "/" + binding.path;
@@ -240,6 +247,15 @@ public static class TranslatorPetModel
         {
             Object.DestroyImmediate(temp);
         }
+    }
+
+    static bool IsSmileCurve(EditorCurveBinding b) => C.Pet.Smile.Any(s => b.propertyName == "blendShape." + s.shape);
+
+    /// <summary>Only shapes this model has (motions borrowed from another model carry that model's face).</summary>
+    static bool HasShape(Transform model, EditorCurveBinding b)
+    {
+        var mesh = model.Find(b.path)?.GetComponent<SkinnedMeshRenderer>()?.sharedMesh;
+        return mesh != null && mesh.GetBlendShapeIndex(b.propertyName.Substring("blendShape.".Length)) >= 0;
     }
 
     /// <summary>A curve through the samples with straight-line tangents, so 30 fps samples play back smoothly.</summary>

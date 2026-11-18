@@ -64,7 +64,7 @@ public static class TranslatorPrefabBuilder
             Transform head = null;
             if (petModel != null)
             {
-                head = TranslatorPetModel.FindDeep(robot.transform, "Head");
+                head = TranslatorPetModel.Head(robot.transform);
                 TranslatorReactionsBuilder.AddPatZone(head, new Vector3(0, 0.08f, 0));
                 TranslatorNameTag.Add(head, robot.transform, outputDir);
                 TranslatorReactionsBuilder.AddHeadLook(head, robot.transform, gaze.transform);

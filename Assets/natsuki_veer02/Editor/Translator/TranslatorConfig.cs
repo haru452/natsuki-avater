@@ -42,15 +42,15 @@ public static class TranslatorConfig
 
     // A humanoid model as the pet instead of the robot. Asset Store models cannot be redistributed, so the
     // BOOTH build sets PetModelPath to "" (or leaves the model out) and gets the robot.
-    public const string PetModelPath = "Assets/Mryotaisu/Models/Muryotaisu.fbx";  // "" for the robot (BOOTH)
+    /// <summary>Which model: TranslatorPetProfile.Muryotaisu (Natsuki) or TranslatorPetProfile.Riko2 (VRoid).</summary>
+    public static readonly TranslatorPetProfile Pet = TranslatorPetProfile.Riko2;
+    public static readonly string PetModelPath = Pet.ModelPath;  // "" for the robot (BOOTH)
     /// <summary>The model's own prefab: its renderers carry the textured materials (the FBX's embedded ones are blank).</summary>
-    public const string PetMaterialSource = "Assets/Mryotaisu/Prefabs/Muryotaisu.prefab";
-    public const string PetIdleClip = "Assets/Mryotaisu/Animators/IdleA.anim";
-    public const string PetWalkClip = "Assets/Mryotaisu/Animators/Walk.anim";
-    public const string PetBoredClip = "Assets/Mryotaisu/Animators/IdleB.anim";
-    public const string PetWakeClip = "Assets/Mryotaisu/Animators/Jump.anim";
-    public const string PetSmileShape = "Smile";
-    public static readonly string[] PetSmileMeshes = { "Face", "Eye", "EyeLash" };
+    public static readonly string PetMaterialSource = Pet.MaterialSource;
+    public static readonly string PetIdleClip = Pet.IdleClip;
+    public static readonly string PetWalkClip = Pet.WalkClip;
+    public static readonly string PetBoredClip = Pet.BoredClip;
+    public static readonly string PetWakeClip = Pet.WakeClip;
     /// <summary>On while the model is near its waiting spot (a contact, not synced); then it walks the rest in.</summary>
     public const string ArrivedParam = "TranslatorPetArrived";
     public const float ArriveRadius = 0.5f;
@@ -85,7 +85,7 @@ public static class TranslatorConfig
 
     // Name tag over the humanoid pet's head, like VRChat's own: icon, name, a pronoun pill and a status line.
     /// <summary>Whose face the icon shows: the pet herself (Natsuki).</summary>
-    public const string NameTagAvatarPrefab = PetMaterialSource;
+    public static readonly string NameTagAvatarPrefab = PetMaterialSource;
     /// <summary>
     /// The icon photo (cut from the wearer's cherry-blossom screenshot; TranslatorIconCapture can shoot one in Unity
     /// instead, overwriting it) and the finished tag picture (Tools/translator/nametag.py).
@@ -100,7 +100,7 @@ public static class TranslatorConfig
     /// <summary>The chat bubble's bottom, this far above the name tag's centre (metres before the pet's scale).</summary>
     public const float ChatBubbleLift = 0.10f;
     public const float BlinkSeconds = 4f;
-    public static readonly (string mesh, string shape)[] PetBlinkShapes = { ("EyeLash", "Blink"), ("Face", "EyeClose"), ("Eye", "EyeClose") };
+    public static readonly (string mesh, string shape)[] PetBlinkShapes = Pet.Blink;
     /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>
     public const float PetHeightRatio = 0.6f;
     /// <summary>Where the pet waits: in front and to the right of the wearer, on the ground (out from under their feet).</summary>
