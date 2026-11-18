@@ -86,7 +86,7 @@ public class TranslatorPetModelTests
     public void Motion_BodyLookPatBlink_NoHopNoSleep()
     {
         CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName, P.SideLayerName,
-                TranslatorPetCommands.WaitLayerName, TranslatorPetCommands.TurnLayerName },
+                TranslatorPetCommands.WaitLayerName, TranslatorPetCommands.TurnLayerName, TranslatorPetGaze.LayerName },
             c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VoiceParam).type);
@@ -433,7 +433,7 @@ public class TranslatorPetModelTests
         var toggle = menu.controls.Single(c => c.name == C.MirrorLabel);
         Assert.AreEqual(C.MirrorParam, toggle.parameter.name);
         Assert.IsTrue(c.parameters.Any(x => x.name == C.MirrorParam));
-        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 5, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit, wait and turn)");
+        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 6, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit, wait, turn and gaze adjustment)");
     }
 
     // ---- Called by name (the PC app hears it and sets CalledParam for a moment) ----

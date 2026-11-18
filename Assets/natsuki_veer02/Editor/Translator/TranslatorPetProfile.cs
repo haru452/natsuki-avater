@@ -9,7 +9,7 @@ public sealed class TranslatorPetProfile
     public string MaterialSource;
     // Humanoid motions; they are retargeted onto this model's bones when baked.
     public string IdleClip, WalkClip, BoredClip, WakeClip;
-    public string HeadBone, LeftEyeBone;
+    public string HeadBone, LeftEyeBone, RightEyeBone;
     /// <summary>The smile (petted, or looked at).</summary>
     public (string mesh, string shape)[] Smile;
     /// <summary>The blink: every shape closes together.</summary>
@@ -36,6 +36,7 @@ public sealed class TranslatorPetProfile
         WakeClip = Mryotaisu + "Animators/Jump.anim",
         HeadBone = "Head",
         LeftEyeBone = "Left Eye",
+        RightEyeBone = "Right Eye",
         Smile = new[] { ("EyeLash", "Smile") },
         Blink = new[] { ("EyeLash", "Blink"), ("Face", "EyeClose"), ("Eye", "EyeClose") },
         // The lashes' smile alone sat over open eyes and looked like eyebrows.
@@ -54,6 +55,7 @@ public sealed class TranslatorPetProfile
         WakeClip = "Assets/natsuki_veer02/PetMotions/Pet_Jump.anim",
         HeadBone = "J_Bip_C_Head",
         LeftEyeBone = "J_Adj_L_FaceEye",
+        RightEyeBone = "J_Adj_R_FaceEye",
         // VRoid's joy face already closes the eyes into smiling arcs, so the blink opens under it.
         Smile = new[] { ("Face", "Fcl_ALL_Joy") },
         Blink = new[] { ("Face", "Fcl_EYE_Close") },
@@ -73,6 +75,7 @@ public sealed class TranslatorPetProfile
         WakeClip = "Assets/natsuki_veer02/PetMotions/Pet_Jump.anim",
         HeadBone = "J_Bip_C_Head",
         LeftEyeBone = "J_Adj_L_FaceEye",
+        RightEyeBone = "J_Adj_R_FaceEye",
         // VRoid's joy face already closes the eyes into smiling arcs, so the blink opens under it.
         Smile = new[] { ("Face", "Fcl_ALL_Joy") },
         Blink = new[] { ("Face", "Fcl_EYE_Close") },

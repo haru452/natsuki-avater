@@ -13,7 +13,7 @@ public static class TranslatorBudget
     public static int SyncedBits(int katSyncCount) => 2 + KatBits(katSyncCount);
 
     /// <summary>Bits the prefab adds to these parameters; names the avatar already declares are not counted twice.</summary>
-    /// <param name="mirror">the prefab has the humanoid's mirror-mode toggle, called-by-name flag and sit/wait/turn commands (five more bits)</param>
+    /// <param name="mirror">the prefab has the humanoid's mirror-mode toggle, called-by-name flag and sit/wait/turn commands and gaze adjustment (six more bits)</param>
     public static int AddedBits(VRCExpressionParameters parameters, int katSyncCount, bool mirror = false)
     {
         // Unity's == null, not ?.: a missing asset reference is a fake-null object.

@@ -75,6 +75,9 @@ public static class TranslatorConfig
     /// <summary>Mirror mode (menu): she waits right beside the wearer instead of in front, so not inside the mirror.</summary>
     public const string MirrorParam = "TranslatorPetMirror";
     public const string MirrorLabel = "鏡モード";
+    /// <summary>視線調節: on, her eyes follow the wearer's head turns; off, they keep that direction (TranslatorPetGaze).</summary>
+    public const string GazeAdjustParam = "TranslatorPetGazeAdjust";
+    public const string GazeAdjustLabel = "視線調節";
     /// <summary>
     /// Called by name: the PC translator app sets this for a moment when it hears the wearer say her name
     /// (synced, not in the menu); she turns to the wearer and smiles, as when looked at, for CalledSeconds.
