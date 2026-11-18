@@ -86,7 +86,7 @@ public class TranslatorPetModelTests
     public void Motion_BodyLookPatBlink_NoHopNoSleep()
     {
         CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName, P.SideLayerName,
-                TranslatorPetCommands.WaitLayerName },
+                TranslatorPetCommands.WaitLayerName, TranslatorPetCommands.TurnLayerName },
             c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VoiceParam).type);
@@ -411,7 +411,7 @@ public class TranslatorPetModelTests
         var toggle = menu.controls.Single(c => c.name == C.MirrorLabel);
         Assert.AreEqual(C.MirrorParam, toggle.parameter.name);
         Assert.IsTrue(c.parameters.Any(x => x.name == C.MirrorParam));
-        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 4, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit and wait)");
+        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 5, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit, wait and turn)");
     }
 
     // ---- Called by name (the PC app hears it and sets CalledParam for a moment) ----
@@ -432,8 +432,9 @@ public class TranslatorPetModelTests
     {
         var look = M.LookLayerName;
         var called = State(look, "Called");
-        Assert.AreEqual($"Look:{C.LookedParam}If0 | Called:{C.CalledParam}If0", Transitions(State(look, "Away")));
-        Assert.AreEqual($"Look:{C.LookedParam}If0 | Away:@1", Transitions(called), "looked at meanwhile: keeps looking");
+        string front = $"&{C.TurnParam}IfNot0";
+        Assert.AreEqual($"Look:{C.LookedParam}If0{front} | Called:{C.CalledParam}If0{front}", Transitions(State(look, "Away")));
+        Assert.AreEqual($"Look:{C.LookedParam}If0{front} | Away:@1 | Away:{C.TurnParam}If0", Transitions(called), "looked at meanwhile: keeps looking");
         Assert.AreEqual(C.CalledSeconds, Clip(called).length, 0.01f);
         var lookClip = Clip(State(look, "Look"));
         foreach (var b in AnimationUtility.GetCurveBindings(lookClip))
@@ -559,6 +560,28 @@ public class TranslatorPetModelTests
         robot.transform.localRotation = Quaternion.identity;
         robot.transform.localScale = Vector3.one;
         return root;
+    }
+
+    [Test]
+    public void Turn_SheFacesAway_UntilToldOrSheSetsOff()
+    {
+        var p = prefab.GetComponent<ModularAvatarParameters>().parameters.Single(x => x.nameOrPrefix == C.TurnParam);
+        Assert.AreEqual(ParameterSyncType.Bool, p.syncType, "everyone sees her turned round");
+        var layer = TranslatorPetCommands.TurnLayerName;
+        float Yaw(string state) => AnimationUtility.GetEditorCurve(Clip(State(layer, state)),
+            EditorCurveBinding.FloatCurve(M.HopPath, typeof(VRCAimConstraint), TranslatorPetCommands.TurnProperty)).Evaluate(0f);
+        Assert.AreEqual(0f, Yaw("Front"));
+        Assert.AreEqual(180f, Yaw("Back"), "a half-turn on top of where she faces");
+        Assert.AreEqual(0f, Yaw("Clear"));
+        Assert.AreEqual("Front", Layer(layer).defaultState.name);
+        Assert.AreEqual($"Back:{C.TurnParam}If0", Transitions(State(layer, "Front")));
+        Assert.AreEqual($"Front:{C.TurnParam}IfNot0 | Clear:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}&{C.WaitParam}IfNot0",
+            Transitions(State(layer, "Back")), "sets off after the wearer: faces front (not walking backwards)");
+        Assert.AreEqual(C.TurnSeconds, State(layer, "Front").transitions.Single().duration, 1e-4f, "turns, not snaps");
+        var driver = State(layer, "Clear").behaviours.OfType<VRCAvatarParameterDriver>().Single();
+        Assert.AreEqual((C.TurnParam, 0f), (driver.parameters.Single().name, driver.parameters.Single().value));
+        Assert.IsTrue(Layer(M.LookLayerName).states.Select(s => s.state).Single(s => s.name == "Look").transitions
+            .Any(t => t.destinationState.name == "Away" && t.conditions.Any(k => k.parameter == C.TurnParam)), "turned round, she stops looking back");
     }
 
     [Test]

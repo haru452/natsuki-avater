@@ -90,6 +90,9 @@ public static class TranslatorConfig
     /// <summary>On while the wearer is within WaitRange of her (a contact); leaving it ends the waiting and she respawns.</summary>
     public const string InRangeParam = "TranslatorPetInRange";
     public const float WaitRange = 20f;
+    /// <summary>Turn round (後ろ向いて): she faces away until told to face front again or she sets off (synced).</summary>
+    public const string TurnParam = "TranslatorPetTurn";
+    public const float TurnSeconds = 0.6f;
     /// <summary>The squat she passes through on the way down to sit and back up (TranslatorPetMotions).</summary>
     public const string PetCrouchClip = "Assets/natsuki_veer02/PetMotions/Pet_Crouch.anim";
     public const float SitDownSeconds = 1.2f;
