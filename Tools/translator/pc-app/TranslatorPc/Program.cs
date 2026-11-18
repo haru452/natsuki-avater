@@ -69,6 +69,13 @@ static class Program
         var log = new TranslationLog(Path.Combine(DataDir, "translation_log.tsv"));
         var petCall = new PetCall(Send, Now);
         var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say, petCall);
+        // Other players' voices, translated into Japanese on the phone's page, only while the page is open.
+        var feed = new OthersFeed(() => DateTime.Now);
+        var others = new OthersVoice(auto, deepl, feed, Now, screen.Say);
+        string phoneUrl = PhoneServer.Url() ?? "（ネットワークが見つかりません）";
+        PhoneServer? phoneServer = null;
+        try { phoneServer = new PhoneServer(feed); }
+        catch (SocketException e) { phoneUrl = $"（ポート {OthersFeed.Port} が使えません: {e.Message}）"; }
 
         var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
@@ -88,8 +95,10 @@ static class Program
             }
         });
         Background("translate", () => { while (!stop.IsCancellationRequested) pipeline.ProcessNext(300); });
+        Background("others", () => { while (!stop.IsCancellationRequested) others.ProcessNext(300); });
 
         using var mic = new MicSource(new FrameSink(pipeline.FeedFrame));
+        using var vrchatSound = new VrchatSource(new FrameSink(others.FeedFrame));
         var cpu = new CpuMeter();
         double nextScreen = 0;
         while (!stop.IsCancellationRequested)
@@ -100,6 +109,9 @@ static class Program
             {
                 nextScreen = Now() + 1;
                 mic.Update(pipeline.Active); // the microphone is open only while the pet is out (ペット)
+                bool phoneOpen = feed.HasViewer;
+                others.Listening = phoneOpen;
+                vrchatSound.Update(phoneOpen); // VRChat's sound is heard only while the phone's page is open
                 screen.Show(new[]
                 {
                     "VRC Translator PC（K: DeepL のキー / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
@@ -111,6 +123,8 @@ static class Program
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),
                     "音声認識:    " + (reazon != null ? "SenseVoice + 日本語は ReazonSpeech" : "SenseVoice"),
                     "声の保存:    " + (recorder.On ? $"オン（{recorder.Saved} 文、{SampleRecorder.Dir}）" : "オフ"),
+                    "相手の声:    " + (phoneOpen ? "訳しています（スマホに表示中・日本語は訳しません）" : "スマホで開くと訳します: " + phoneUrl),
+                    "VRChat の音: " + vrchatSound.State,
                     $"CPU:         {cpu.Percent():0.0} %",
                 });
                 HandleKeys(settings, screen, recorder);
@@ -118,6 +132,7 @@ static class Program
             stop.Token.WaitHandle.WaitOne(50);
         }
         fromVrchat.Close();
+        phoneServer?.Dispose();
         return 0;
     }
 

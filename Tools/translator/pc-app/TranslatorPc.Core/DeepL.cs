@@ -27,12 +27,14 @@ public static class DeepL
 
     static string TargetCode(Lang l) => l switch { Lang.JA => "JA", Lang.EN => "EN-US", Lang.ZH => "ZH-HANS", _ => throw new ArgumentException(l.ToString()) };
 
-    public static string Body(string text, Lang source, Lang target) => new JsonObject
+    /// <summary>A language the recognizer cannot name (OTHER: Korean and the like) is left for DeepL to detect.</summary>
+    public static string Body(string text, Lang source, Lang target)
     {
-        ["text"] = new JsonArray(text),
-        ["source_lang"] = SourceCode(source),
-        ["target_lang"] = TargetCode(target),
-    }.ToJsonString();
+        var body = new JsonObject { ["text"] = new JsonArray(text) };
+        if (source != Lang.OTHER) body["source_lang"] = SourceCode(source);
+        body["target_lang"] = TargetCode(target);
+        return body.ToJsonString();
+    }
 
     public static string Parse(string json)
     {
