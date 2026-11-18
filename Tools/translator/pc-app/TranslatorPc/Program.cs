@@ -1,5 +1,5 @@
 ﻿// translator_pc.exe: VRC Translator on the PC alone.
-// PC microphone (only while the avatar's 翻訳 toggle is on) → SenseVoice → DeepL → the pet's KAT text / chatbox.
+// PC microphone (only while the avatar's ペット toggle is on; its 翻訳 toggle turns translating on and off) → SenseVoice → DeepL → the pet's KAT text / chatbox.
 // VRChat → us on 9001 (the toggle), us → VRChat on 9000.
 using System.Diagnostics;
 using System.Net;
@@ -98,12 +98,13 @@ static class Program
             if (Now() >= nextScreen)
             {
                 nextScreen = Now() + 1;
-                mic.Update(pipeline.Active); // the microphone is open only while 翻訳 is on
+                mic.Update(pipeline.Active); // the microphone is open only while the pet is out (ペット)
                 screen.Show(new[]
                 {
                     "VRC Translator PC（K: DeepL のキー / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
                     "",
-                    "翻訳:        " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「翻訳」で切り替え）"),
+                    "ペット:      " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「ペット」で切り替え）"),
+                    "翻訳:        " + (pipeline.Translating ? "オン" : "オフ（名前を呼ぶと反応だけします）"),
                     "マイク:      " + mic.State,
                     "DeepL キー:  " + Settings.MaskKey(settings.DeepLKey),
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),

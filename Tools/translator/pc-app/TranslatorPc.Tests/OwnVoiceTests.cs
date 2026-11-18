@@ -163,6 +163,36 @@ public class OwnVoiceTests
     }
 
     [Fact]
+    public void TranslationOff_StillHearsHerName_ButShowsAndSendsNothing()
+    {
+        var sent = new List<string>();
+        var call = new PetCall(p => sent.Add(Osc.Parse(p).Address), () => now);
+        var p = new OwnVoice(new Settings(), stt, translator, display, new FakeKana(),
+            (src, orig, trans) => logged.Add(orig), () => now, said.Add, call);
+        p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
+        Assert.True(p.Translating, "on until the avatar says otherwise");
+        p.OnOsc(OwnVoice.TranslateParam, new object[] { false });
+        Assert.False(p.Translating);
+        Assert.Equal(new[] { "clear" }, display.Events);
+
+        stt.Answer = new(Lang.JA, "誉、おいで", true);
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Equal(new[] { PetCall.CalledParam }, sent);
+        stt.Answer = new(Lang.JA, "おはよう", true);
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Empty(translator.Calls);
+        Assert.Empty(logged);
+        Assert.Equal(new[] { "clear" }, display.Events);
+
+        p.OnOsc(OwnVoice.TranslateParam, new object[] { true });
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Single(translator.Calls);
+    }
+
+    [Fact]
     public void ChineseTargetIsMarkedForTheChatbox()
     {
         var p = Make(Lang.ZH);

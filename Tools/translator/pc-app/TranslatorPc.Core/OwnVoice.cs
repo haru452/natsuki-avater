@@ -16,6 +16,8 @@ public interface IKana
 public class OwnVoice
 {
     public const string ActiveParam = Kat.Prefix + "TranslatorActive";
+    /// <summary>The avatar's 翻訳 toggle: off, the pet still listens for her name but nothing is translated or shown.</summary>
+    public const string TranslateParam = Kat.Prefix + "TranslatorTranslate";
     public const string AvatarChange = "/avatar/change";
     /// <summary>A recording older than this when its turn comes is skipped: the moment has passed.</summary>
     public const double StaleSeconds = 20;
@@ -55,12 +57,28 @@ public class OwnVoice
     /// <summary>The display is shared with the screen loop; take this lock around Tick.</summary>
     public object DisplayLock => gate;
 
+    /// <summary>Translate and show what is said (the avatar's 翻訳 toggle; on until the avatar says otherwise).</summary>
+    public bool Translating { get; private set; } = true;
+
     public void OnOsc(string address, object[] args)
     {
         if (address == AvatarChange) { SetActive(false); return; }
-        if (address != ActiveParam || args.Length == 0) return;
+        if (args.Length == 0 || address is not (ActiveParam or TranslateParam)) return;
         bool? on = args[0] switch { bool b => b, int i => i != 0, float f => f != 0, _ => null };
-        if (on is bool value) SetActive(value);
+        if (on is not bool value) return;
+        if (address == ActiveParam) SetActive(value);
+        else SetTranslating(value);
+    }
+
+    void SetTranslating(bool on)
+    {
+        lock (gate)
+        {
+            if (on == Translating) return;
+            Translating = on;
+            if (!on) display.Clear();
+        }
+        say(on ? "翻訳: オン" : "翻訳: オフ（名前だけ聞いています）");
     }
 
     void SetActive(bool on)
@@ -120,6 +138,7 @@ public class OwnVoice
         if (!IsCurrent(gen)) return; // recorded before the toggle went off
         IfCurrent(gen, () =>
         {
+            if (!Translating) return;
             display.ChatboxOnly = settings.TargetLang != Lang.EN;
             display.Thinking();
         });
@@ -142,6 +161,9 @@ public class OwnVoice
             IfCurrent(gen, () => { petCall.Call(); called = true; });
             if (called) say("名前を呼ばれました: " + heard.Text);
         }
+        bool translating;
+        lock (gate) translating = Translating;
+        if (!translating) return; // nothing shown, sent to DeepL or logged
         // English is shown as it is (no Japanese anywhere: the wearer did not want it on screen).
         var target = source == Lang.JA ? settings.TargetLang : Lang.EN;
         lock (gate) display.ChatboxOnly = target != Lang.EN;
