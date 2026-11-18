@@ -264,5 +264,11 @@ public static class TranslatorConfig
     /// </summary>
     public const string TranslateParam = "TranslatorTranslate";
     public const string TranslateLabel = "翻訳";
+    /// <summary>
+    /// Talking with her (the PC app answers through Gemini when she is called by name) on or off. Like 翻訳: read only
+    /// by the PC app (local, not synced, remembered, on by default).
+    /// </summary>
+    public const string ChatParam = "TranslatorChat";
+    public const string ChatLabel = "会話";
     public const string LocalAILabel = "ローカルAI";
 }

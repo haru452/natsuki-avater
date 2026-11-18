@@ -34,6 +34,16 @@ MonoBehaviour:
     subMenu: {fileID: 0}
     subParameters: []
     labels: []
+  - name: "\u4F1A\u8A71"
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: TranslatorChat
+    value: 1
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
   - name: "\u30ED\u30FC\u30AB\u30EBAI"
     icon: {fileID: 0}
     type: 102

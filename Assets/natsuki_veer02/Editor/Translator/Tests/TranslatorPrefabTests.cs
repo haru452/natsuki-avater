@@ -263,22 +263,29 @@ public class TranslatorPrefabTests
         Assert.IsTrue(translate.saved, "remembered");
         Assert.AreEqual(1f, translate.defaultValue, "translating unless switched off");
         Assert.IsTrue(translate.localOnly, "only the PC app reads it: no synced bits");
-        Assert.IsTrue(ps.Where(p => p.nameOrPrefix != C.TranslateParam).All(p => !p.localOnly && !p.internalParameter));
+        var chat = ps.Single(p => p.nameOrPrefix == C.ChatParam);
+        Assert.AreEqual(ParameterSyncType.Bool, chat.syncType);
+        Assert.IsTrue(chat.saved, "remembered");
+        Assert.AreEqual(1f, chat.defaultValue, "talking unless switched off");
+        Assert.IsTrue(chat.localOnly, "only the PC app reads it: no synced bits");
+        Assert.IsTrue(ps.Where(p => p.nameOrPrefix != C.TranslateParam && p.nameOrPrefix != C.ChatParam)
+            .All(p => !p.localOnly && !p.internalParameter));
     }
 
     [Test]
-    public void Prefab_MenuHasSubmenuWithThreeToggles()
+    public void Prefab_MenuHasSubmenuWithFourToggles()
     {
         var menu = prefab.GetComponent<ModularAvatarMenuInstaller>().menuToAppend;
         var sub = menu.controls.Single();
         Assert.AreEqual("翻訳", sub.name);
         Assert.AreEqual(VRCExpressionsMenu.Control.ControlType.SubMenu, sub.type);
         var toggles = sub.subMenu.controls;
-        Assert.AreEqual(3, toggles.Count);
+        Assert.AreEqual(4, toggles.Count);
         Assert.IsTrue(toggles.All(t => t.type == VRCExpressionsMenu.Control.ControlType.Toggle));
         Assert.AreEqual(("ペット", C.ActiveParam), (toggles[0].name, toggles[0].parameter.name));
         Assert.AreEqual(("翻訳", C.TranslateParam), (toggles[1].name, toggles[1].parameter.name));
-        Assert.AreEqual(("ローカルAI", C.LocalAIParam), (toggles[2].name, toggles[2].parameter.name));
+        Assert.AreEqual(("会話", C.ChatParam), (toggles[2].name, toggles[2].parameter.name));
+        Assert.AreEqual(("ローカルAI", C.LocalAIParam), (toggles[3].name, toggles[3].parameter.name));
     }
 
     [Test]

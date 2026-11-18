@@ -145,6 +145,7 @@ public static class TranslatorPrefabBuilder
             Param(C.ActiveParam, ParameterSyncType.Bool, saved: false),
             Param(C.LocalAIParam, ParameterSyncType.Bool, saved: true),
             Param(C.TranslateParam, ParameterSyncType.Bool, saved: true, defaultValue: 1f, localOnly: true),
+            Param(C.ChatParam, ParameterSyncType.Bool, saved: true, defaultValue: 1f, localOnly: true),
             Param(C.KatVisibleParam, ParameterSyncType.Bool, saved: false),
             Param(C.KatPointerParam, ParameterSyncType.Int, saved: false),
         };
@@ -182,13 +183,14 @@ public static class TranslatorPrefabBuilder
         merge.matchAvatarWriteDefaults = false;
     }
 
-    /// <summary>A menu holding one submenu, "翻訳", with the on/off toggle and the AI switch.</summary>
+    /// <summary>A menu holding one submenu, "翻訳", with the on/off toggle, translating, talking and the AI switch.</summary>
     static VRCExpressionsMenu BuildMenus(string outputDir, bool mirror)
     {
         var controls = new List<VRCExpressionsMenu.Control>
         {
             Toggle(C.ActiveLabel, C.ActiveParam),
             Toggle(C.TranslateLabel, C.TranslateParam),
+            Toggle(C.ChatLabel, C.ChatParam),
             Toggle(C.LocalAILabel, C.LocalAIParam),
         };
         if (mirror) controls.Add(Toggle(C.MirrorLabel, C.MirrorParam));
