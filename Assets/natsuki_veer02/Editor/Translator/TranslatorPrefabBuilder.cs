@@ -143,7 +143,7 @@ public static class TranslatorPrefabBuilder
     }
 
     /// <summary>The parameters the prefab declares, in the order they appear in MA Parameters.</summary>
-    /// <summary>mirror: the humanoid's extras, the mirror-mode toggle, the called-by-name flag and the sit and wait commands (four more synced bits).</summary>
+    /// <summary>mirror: the humanoid's extras, the mirror-mode toggle, the called-by-name flag and the sit, wait and turn commands (five more synced bits).</summary>
     public static List<ParameterConfig> ParameterList(int katSyncCount, bool mirror = false)
     {
         var list = new List<ParameterConfig>
@@ -160,6 +160,7 @@ public static class TranslatorPrefabBuilder
         if (mirror) list.Add(Param(C.CalledParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.SitParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.WaitParam, ParameterSyncType.Bool, saved: false));
+        if (mirror) list.Add(Param(C.TurnParam, ParameterSyncType.Bool, saved: false));
         return list;
     }
 
