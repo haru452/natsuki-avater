@@ -14,11 +14,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Parameters: {fileID: 0}
   controls:
-  - name: "\u7FFB\u8A33"
+  - name: "\u30DA\u30C3\u30C8"
     icon: {fileID: 0}
     type: 102
     parameter:
       name: TranslatorActive
+    value: 1
+    style: 0
+    subMenu: {fileID: 0}
+    subParameters: []
+    labels: []
+  - name: "\u7FFB\u8A33"
+    icon: {fileID: 0}
+    type: 102
+    parameter:
+      name: TranslatorTranslate
     value: 1
     style: 0
     subMenu: {fileID: 0}

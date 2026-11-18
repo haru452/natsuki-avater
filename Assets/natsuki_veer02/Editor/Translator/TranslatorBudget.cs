@@ -21,7 +21,7 @@ public static class TranslatorBudget
             ? parameters.parameters.Where(p => p != null).Select(p => p.name).ToHashSet()
             : new System.Collections.Generic.HashSet<string>();
         return TranslatorPrefabBuilder.ParameterList(katSyncCount, mirror)
-            .Where(p => !existing.Contains(p.nameOrPrefix))
+            .Where(p => !existing.Contains(p.nameOrPrefix) && !p.localOnly)
             .Sum(p => p.syncType == nadena.dev.modular_avatar.core.ParameterSyncType.Bool ? 1 : 8);
     }
 

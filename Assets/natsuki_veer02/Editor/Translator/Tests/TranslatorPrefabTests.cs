@@ -262,21 +262,27 @@ public class TranslatorPrefabTests
         Assert.AreEqual(ParameterSyncType.Int, ps.Single(p => p.nameOrPrefix == "KAT_Pointer").syncType);
         for (int i = 0; i < C.KatSyncCount; i++)
             Assert.AreEqual(ParameterSyncType.Float, ps.Single(p => p.nameOrPrefix == "KAT_CharSync" + i).syncType);
-        Assert.IsTrue(ps.All(p => !p.localOnly && !p.internalParameter));
+        var translate = ps.Single(p => p.nameOrPrefix == C.TranslateParam);
+        Assert.AreEqual(ParameterSyncType.Bool, translate.syncType);
+        Assert.IsTrue(translate.saved, "remembered");
+        Assert.AreEqual(1f, translate.defaultValue, "translating unless switched off");
+        Assert.IsTrue(translate.localOnly, "only the PC app reads it: no synced bits");
+        Assert.IsTrue(ps.Where(p => p.nameOrPrefix != C.TranslateParam).All(p => !p.localOnly && !p.internalParameter));
     }
 
     [Test]
-    public void Prefab_MenuHasSubmenuWithTwoToggles()
+    public void Prefab_MenuHasSubmenuWithThreeToggles()
     {
         var menu = prefab.GetComponent<ModularAvatarMenuInstaller>().menuToAppend;
         var sub = menu.controls.Single();
         Assert.AreEqual("翻訳", sub.name);
         Assert.AreEqual(VRCExpressionsMenu.Control.ControlType.SubMenu, sub.type);
         var toggles = sub.subMenu.controls;
-        Assert.AreEqual(2, toggles.Count);
+        Assert.AreEqual(3, toggles.Count);
         Assert.IsTrue(toggles.All(t => t.type == VRCExpressionsMenu.Control.ControlType.Toggle));
-        Assert.AreEqual(("翻訳", C.ActiveParam), (toggles[0].name, toggles[0].parameter.name));
-        Assert.AreEqual(("ローカルAI", C.LocalAIParam), (toggles[1].name, toggles[1].parameter.name));
+        Assert.AreEqual(("ペット", C.ActiveParam), (toggles[0].name, toggles[0].parameter.name));
+        Assert.AreEqual(("翻訳", C.TranslateParam), (toggles[1].name, toggles[1].parameter.name));
+        Assert.AreEqual(("ローカルAI", C.LocalAIParam), (toggles[2].name, toggles[2].parameter.name));
     }
 
     [Test]
@@ -312,7 +318,7 @@ public class TranslatorPrefabTests
     [TestCase(16, 139)]
     public void Budget_SyncedBitsMatchesParameters(int sync, int expected)
     {
-        int counted = TranslatorPrefabBuilder.ParameterList(sync)
+        int counted = TranslatorPrefabBuilder.ParameterList(sync).Where(p => !p.localOnly)
             .Sum(p => p.syncType == ParameterSyncType.Bool ? 1 : 8);
         Assert.AreEqual(expected, counted);
         Assert.AreEqual(expected, TranslatorBudget.SyncedBits(sync));

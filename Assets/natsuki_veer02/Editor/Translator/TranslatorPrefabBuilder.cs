@@ -149,6 +149,7 @@ public static class TranslatorPrefabBuilder
         {
             Param(C.ActiveParam, ParameterSyncType.Bool, saved: false),
             Param(C.LocalAIParam, ParameterSyncType.Bool, saved: true),
+            Param(C.TranslateParam, ParameterSyncType.Bool, saved: true, defaultValue: 1f, localOnly: true),
             Param(C.KatVisibleParam, ParameterSyncType.Bool, saved: false),
             Param(C.KatPointerParam, ParameterSyncType.Int, saved: false),
         };
@@ -159,12 +160,13 @@ public static class TranslatorPrefabBuilder
         return list;
     }
 
-    static ParameterConfig Param(string name, ParameterSyncType type, bool saved) => new ParameterConfig
+    static ParameterConfig Param(string name, ParameterSyncType type, bool saved, float defaultValue = 0f, bool localOnly = false) => new ParameterConfig
     {
         nameOrPrefix = name,
         syncType = type,
         saved = saved,
-        defaultValue = 0f,
+        localOnly = localOnly,
+        defaultValue = defaultValue,
         hasExplicitDefaultValue = true,
     };
 
@@ -186,6 +188,7 @@ public static class TranslatorPrefabBuilder
         var controls = new List<VRCExpressionsMenu.Control>
         {
             Toggle(C.ActiveLabel, C.ActiveParam),
+            Toggle(C.TranslateLabel, C.TranslateParam),
             Toggle(C.LocalAILabel, C.LocalAIParam),
         };
         if (mirror) controls.Add(Toggle(C.MirrorLabel, C.MirrorParam));
