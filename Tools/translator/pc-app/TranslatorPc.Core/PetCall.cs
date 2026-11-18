@@ -56,6 +56,7 @@ public class PetCall
     /// <param name="also">other recognizers' text for the same speech: her name counts there too</param>
     public string? Hear(string text, string kana, Settings settings, string also = "")
     {
+        LastWasCall = false;
         bool name = Heard(text, kana, settings) || (also.Length > 0 && Heard(also, "", settings));
         double now = clock();
         if (name) Call();
@@ -64,12 +65,19 @@ public class PetCall
             if (name) nameAt = now;
             bool listening = nameAt is double t && now - t <= CommandSeconds;
             var command = listening ? PetCommands.Find(text, kana, settings.PetCommandWords, settings.PetCallNames) : null;
-            if (command is not PetCommand c) return name ? "名前を呼ばれました: " + text : null;
+            if (command is not PetCommand c)
+            {
+                LastWasCall = name;
+                return name ? "名前を呼ばれました: " + text : null;
+            }
             foreach (var (address, value) in PetCommands.Parameters(c)) send(Osc.Message(address, value));
             nameAt = null; // one command per call: later sentences are for the people around, not for her
             return $"ペットへの命令: {PetCommands.Describe(c)}（{text}）";
         }
     }
+
+    /// <summary>The last sentence Hear took called her by name without a command (she may answer it: PetChat).</summary>
+    public bool LastWasCall { get; private set; }
 
     /// <summary>Turns the flag on (again) and schedules it off.</summary>
     public void Call()

@@ -23,6 +23,7 @@ static class Program
         var settings = Settings.Load(Settings.DefaultPath);
         var screen = new Screen();
         if (args.Length >= 2 && args[0] == "--test-command") return TestCommand(args.Skip(1), settings);
+        if (args.Length >= 2 && args[0] == "--test-chat") return TestChat(args.Skip(1), settings);
 
         // Next to the exe (AppContext.BaseDirectory is the single-file extraction folder).
         string exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
@@ -71,7 +72,8 @@ static class Program
             holdSeconds: settings.KatHoldSeconds);
         var log = new TranslationLog(Path.Combine(DataDir, "translation_log.tsv"));
         var petCall = new PetCall(Send, Now);
-        var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say, petCall);
+        var chat = new PetChat(() => settings.GeminiKey, (url, body) => GeminiHttp.Call(url, body, settings.GeminiKey));
+        var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say, petCall, chat);
         // Other players' voices, translated into Japanese on the phone's page, only while the page is open.
         var feed = new OthersFeed(() => DateTime.Now);
         var others = new OthersVoice(auto, deepl, feed, Now, screen.Say, () => settings.TranslateOthers);
@@ -126,10 +128,13 @@ static class Program
                 vrchatSound.Update(phoneOpen); // VRChat's sound is heard only while the phone's page is open
                 screen.Show(new[]
                 {
-                    "VRC Translator PC（K: DeepL のキー / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
+                    "VRC Translator PC（K: DeepL のキー / G: Gemini のキー / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
                     "",
                     "ペット:      " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「ペット」で切り替え）"),
                     "翻訳:        " + (pipeline.Translating ? "オン" : "オフ（名前を呼ぶと反応だけします）"),
+                    "会話:        " + (!settings.PetChat ? "オフ"
+                        : settings.GeminiKey.Trim().Length == 0 ? "Gemini のキーがありません（G キーで入れてください）"
+                        : "名前を呼ぶと、ほまれが英語で返事します（Gemini" + (chat.Model != null ? ": " + chat.Model : "") + "）"),
                     "マイク:      " + mic.State,
                     "DeepL キー:  " + Settings.MaskKey(settings.DeepLKey),
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),
@@ -162,6 +167,18 @@ static class Program
                 settings.TargetLang = settings.TargetLang == Lang.ZH ? Lang.EN : Lang.ZH;
                 settings.Save(Settings.DefaultPath);
             }
+            else if (key == ConsoleKey.G)
+            {
+                screen.Pause();
+                Console.WriteLine("Gemini の API キーを貼り付けて Enter（空のまま Enter でやめる）:");
+                var entered = Console.ReadLine()?.Trim() ?? "";
+                if (entered.Length > 0)
+                {
+                    settings.GeminiKey = entered;
+                    settings.Save(Settings.DefaultPath);
+                }
+                screen.Resume();
+            }
             else if (key == ConsoleKey.K)
             {
                 screen.Pause();
@@ -189,6 +206,21 @@ static class Program
             var command = PetCommands.Find(text, reading, settings.PetCommandWords, settings.PetCallNames);
             Console.WriteLine($"{text} → かな: {reading} / 名前: {(name ? "あり" : "なし")} / 命令: "
                               + (command is PetCommand c ? PetCommands.Describe(c) : "なし"));
+        }
+        return 0;
+    }
+
+    /// <summary>--test-chat "ちゃん、元気？" …: her answers through Gemini (needs the key; no microphone or VRChat).</summary>
+    static int TestChat(IEnumerable<string> sentences, Settings settings)
+    {
+        var chat = new PetChat(() => settings.GeminiKey, (url, body) => GeminiHttp.Call(url, body, settings.GeminiKey));
+        foreach (var text in sentences)
+        {
+            try { Console.WriteLine($"{text} → ほまれ: {chat.Reply(text)}（{chat.Model}）"); }
+            catch (Exception e) when (e is PetChatException or HttpRequestException or TaskCanceledException)
+            {
+                Console.WriteLine($"{text} → 返事なし: {e.Message}");
+            }
         }
         return 0;
     }
@@ -232,6 +264,22 @@ static class Program
         Console.WriteLine("Enter で終わります。");
         if (!Console.IsInputRedirected) Console.ReadLine();
         return 1;
+    }
+}
+
+/// <summary>Gemini over HTTPS. The key goes only in the x-goog-api-key header.</summary>
+static class GeminiHttp
+{
+    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    public static (int Status, string Json) Call(string url, string? body, string key)
+    {
+        using var request = new HttpRequestMessage(body == null ? HttpMethod.Get : HttpMethod.Post, url);
+        if (body != null) request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        request.Headers.Add("x-goog-api-key", key.Trim());
+        using var response = Http.Send(request);
+        using var reader = new StreamReader(response.Content.ReadAsStream(), Encoding.UTF8);
+        return ((int)response.StatusCode, reader.ReadToEnd());
     }
 }
 

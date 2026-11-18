@@ -33,15 +33,18 @@ public class OwnVoice
     readonly Func<double> clock;
     readonly Action<string> say;
     readonly PetCall? petCall;
+    readonly IPetChat? chat;
     readonly object gate = new();
     readonly Segmenter segmenter = new(SegmenterSettings.ForPcMic());
     readonly BlockingCollection<Recording> queue = new();
     int generation; // bumped whenever listening stops, so older recordings are dropped
 
     public OwnVoice(Settings settings, IRecognizer stt, ITranslator translator, IDisplay display, IKana kana,
-        Action<Lang, string, string> log, Func<double> clock, Action<string> say, PetCall? petCall = null)
+        Action<Lang, string, string> log, Func<double> clock, Action<string> say, PetCall? petCall = null,
+        IPetChat? chat = null)
     {
         this.petCall = petCall;
+        this.chat = chat;
         this.settings = settings;
         this.stt = stt;
         this.translator = translator;
@@ -132,6 +135,32 @@ public class OwnVoice
         return true;
     }
 
+    /// <summary>Her answer on her bubble (English); only the wearer's own recognized words go to Gemini.</summary>
+    void Answer(int gen, string said)
+    {
+        IfCurrent(gen, () =>
+        {
+            display.ChatboxOnly = false;
+            display.Thinking();
+        });
+        string reply;
+        try { reply = chat!.Reply(said); }
+        catch (PetChatException e)
+        {
+            say("ほまれが返事できませんでした: " + e.Message);
+            IfCurrent(gen, display.Error);
+            return;
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException)
+        {
+            say("ほまれが返事できませんでした（ネットにつながらない？）: " + e.GetType().Name);
+            IfCurrent(gen, display.Error);
+            return;
+        }
+        say($"ほまれ: {reply}（{said}）");
+        IfCurrent(gen, () => display.Show(new TranslationResult(Lang.JA, Lang.EN, said, reply)));
+    }
+
     void Process(Recording item)
     {
         int gen = item.Generation;
@@ -162,6 +191,12 @@ public class OwnVoice
             var also = string.Join(" ", heard.AllTexts.Skip(1));
             IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings, also));
             if (reaction != null) say(reaction);
+            // Called by name, not told to do something: she answers (translated or not; for playing alone too).
+            if (chat != null && settings.PetChat && petCall.LastWasCall)
+            {
+                Answer(gen, heard.Text);
+                return;
+            }
         }
         bool translating;
         lock (gate) translating = Translating;

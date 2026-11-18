@@ -7,6 +7,10 @@ namespace TranslatorPc.Core;
 public class Settings
 {
     public string DeepLKey { get; set; } = "";
+    /// <summary>For talking with her (PetChat): the Gemini API key, entered with G.</summary>
+    public string GeminiKey { get; set; } = "";
+    /// <summary>Called by name (not told to do something), she answers in English on her bubble (needs GeminiKey).</summary>
+    public bool PetChat { get; set; } = true;
     /// <summary>What Japanese is translated into: EN or ZH.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public Lang TargetLang { get; set; } = Lang.EN;
