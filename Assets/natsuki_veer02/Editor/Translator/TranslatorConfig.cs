@@ -76,6 +76,12 @@ public static class TranslatorConfig
     public const string MirrorParam = "TranslatorPetMirror";
     public const string MirrorLabel = "鏡モード";
     /// <summary>
+    /// Called by name: the PC translator app sets this for a moment when it hears the wearer say her name
+    /// (synced, not in the menu); she turns to the wearer and smiles, as when looked at, for CalledSeconds.
+    /// </summary>
+    public const string CalledParam = "TranslatorPetCalled";
+    public const float CalledSeconds = 2.5f;
+    /// <summary>
     /// Each side's sensing capsule, lying front to back (SideSenseLength long, so it also covers her when she is
     /// behind the wearer): this radius, its edge SideSenseGap from the wearer's middle (no flip-flop behind them).
     /// </summary>

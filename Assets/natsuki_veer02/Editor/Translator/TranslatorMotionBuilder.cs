@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -46,8 +47,9 @@ public static class TranslatorMotionBuilder
                 AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(head, typeof(VRCAimConstraint), "GlobalWeight"),
                     AnimationCurve.Constant(0f, Frame, w));
         }
-        BuildTwoStateLayer(controller, LookLayerName, outputDir, "Away", away, "Look", look,
+        var lookLayer = BuildTwoStateLayer(controller, LookLayerName, outputDir, "Away", away, "Look", look,
             C.LookedParam, C.LookTurnSeconds, holdSeconds: 0f);
+        if (petModel != null) AddCalled(controller, lookLayer, look, outputDir);
         var calm = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame);
         var hearts = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds);
         BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,
@@ -94,8 +96,39 @@ public static class TranslatorMotionBuilder
         stop.AddCondition(AnimatorConditionMode.Less, C.HopStopSpeed, C.VelocityParam);
     }
 
+    /// <summary>
+    /// Called by name: from Away she turns to the wearer as for a look, for CalledSeconds, then turns back
+    /// (or keeps looking, if the wearer is looking at her by then). The eye layer smiles (TranslatorPetEyes).
+    /// </summary>
+    static void AddCalled(AnimatorController controller, AnimatorStateMachine sm, AnimationClip look, string outputDir)
+    {
+        controller.AddParameter(C.CalledParam, AnimatorControllerParameterType.Bool);
+        var states = sm.states.Select(s => s.state).ToArray();
+        var away = states.Single(s => s.name == "Away");
+        var looking = states.Single(s => s.name == "Look");
+        var clip = new AnimationClip();
+        foreach (var b in AnimationUtility.GetCurveBindings(look))
+            AnimationUtility.SetEditorCurve(clip, b, AnimationCurve.Constant(0f, C.CalledSeconds, AnimationUtility.GetEditorCurve(look, b).Evaluate(0f)));
+        var called = sm.AddState("Called", new Vector3(550, 200));
+        called.motion = TranslatorAnimationBuilder.SaveClip(clip, outputDir + "/Translator_Called.anim");
+        called.writeDefaultValues = false;
+
+        var enter = away.AddTransition(called);
+        enter.hasExitTime = false;
+        enter.duration = C.LookTurnSeconds;
+        enter.AddCondition(AnimatorConditionMode.If, 0f, C.CalledParam);
+        var keep = called.AddTransition(looking);
+        keep.hasExitTime = false;
+        keep.duration = 0f;
+        keep.AddCondition(AnimatorConditionMode.If, 0f, C.LookedParam);
+        var back = called.AddTransition(away);
+        back.hasExitTime = true;
+        back.exitTime = 1f;
+        back.duration = C.LookTurnSeconds;
+    }
+
     /// <summary>Off/on layer on a Bool. Fades over fadeSeconds; once on, stays at least holdSeconds.</summary>
-    static void BuildTwoStateLayer(AnimatorController controller, string layer, string outputDir,
+    static AnimatorStateMachine BuildTwoStateLayer(AnimatorController controller, string layer, string outputDir,
         string offName, AnimationClip offClip, string onName, AnimationClip onClip, string param,
         float fadeSeconds, float holdSeconds)
     {
@@ -118,6 +151,7 @@ public static class TranslatorMotionBuilder
         leave.exitTime = 1f;
         leave.duration = fadeSeconds;
         leave.AddCondition(AnimatorConditionMode.IfNot, 0f, param);
+        return sm;
     }
 
     static AnimationClip WeightClip(System.Type type, string path, string property, float value, float seconds)
