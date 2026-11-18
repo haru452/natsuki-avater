@@ -39,15 +39,15 @@ public sealed class TranslatorPetProfile
         Highlight = "EyeLight",
     };
 
-    /// <summary>Homare: riko2 (VRoid). Borrows Muryotaisu's motions until she has her own.</summary>
+    /// <summary>Homare: riko2 (VRoid), with the pet's own motions (TranslatorPetMotions): no Asset Store motion needed.</summary>
     public static readonly TranslatorPetProfile Riko2 = new TranslatorPetProfile
     {
         ModelPath = "Assets/riko2/Prefab/riko2.prefab",
         MaterialSource = "Assets/riko2/Prefab/riko2.prefab",
-        IdleClip = Muryotaisu.IdleClip,
-        WalkClip = Muryotaisu.WalkClip,
-        BoredClip = Muryotaisu.BoredClip,
-        WakeClip = Muryotaisu.WakeClip,
+        IdleClip = "Assets/natsuki_veer02/PetMotions/Pet_Idle.anim",
+        WalkClip = "Assets/natsuki_veer02/PetMotions/Pet_Walk.anim",
+        BoredClip = "Assets/natsuki_veer02/PetMotions/Pet_Bored.anim",
+        WakeClip = "Assets/natsuki_veer02/PetMotions/Pet_Jump.anim",
         HeadBone = "J_Bip_C_Head",
         LeftEyeBone = "J_Adj_L_FaceEye",
         // VRoid's joy face already closes the eyes into smiling arcs, so the blink opens under it.

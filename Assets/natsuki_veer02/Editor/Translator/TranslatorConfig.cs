@@ -182,8 +182,8 @@ public static class TranslatorConfig
     public const float HopStartSpeed = 0.5f;
     public const float HopStopSpeed = 0.3f;
     // The humanoid runs while the wearer runs (VRChat: walking about 2 m/s, running about 4).
-    /// <summary>A humanoid running motion (VRChat's own until one of her own is set here); it plays in place.</summary>
-    public const string PetRunClip = "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_run_forward.anim";
+    /// <summary>A humanoid running motion (her own, TranslatorPetMotions; or one you make); it plays in place.</summary>
+    public const string PetRunClip = "Assets/natsuki_veer02/PetMotions/Pet_Run.anim";
     public const float RunStartSpeed = 3f;
     public const float RunStopSpeed = 2.5f;
     /// <summary>The wearer's speed at which the run motion plays at its own pace (it plays faster or slower with them).</summary>
