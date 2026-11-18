@@ -209,7 +209,7 @@ public class TranslatorPetModelTests
 
             // The bubble rides her head, so it resizes with her and stays above the name tag.
             var head = robot.GetComponentsInChildren<Transform>(true).First(t => t.name == "Head");
-            Assert.Greater(head.Find(C.TextName).position.y, head.Find(C.NameTagName).position.y, "bubble above the resized head");
+            Assert.Greater(BubbleBottom(head.Find(C.TextName)), head.Find(C.NameTagName).position.y, "bubble above the resized head");
         }
         finally
         {
@@ -302,6 +302,13 @@ public class TranslatorPetModelTests
         Assert.AreEqual(C.NameTagWidth * 256f / 768f, size.y / robotScale, 0.01f, "the picture's shape");
     }
 
+    /// <summary>Where the shader puts the bubble's bottom: the text quad's origin plus _LiftY of its heights, straight up.</summary>
+    static float BubbleBottom(Transform text)
+    {
+        var quad = text.Find(C.KatObjectName + "/" + C.KatConstraintName + "/" + C.KatTextName);
+        return quad.position.y + quad.lossyScale.y * TranslatorChatBubble.Lift;
+    }
+
     [Test]
     public void Subtitle_IsAChatBubbleOverHerHead_FacingWhoeverLooks()
     {
@@ -309,11 +316,14 @@ public class TranslatorPetModelTests
         var text = head.Find(C.TextName);
         Assert.IsNotNull(text, "rides her head");
         Assert.IsNull(Find("Pet_Root/Pet_Follow/" + C.TextName), "not the robot's place");
-        Assert.Greater(text.position.y, head.Find(C.NameTagName).position.y, "above the name tag");
+        Assert.Less(Vector3.Distance(head.position, text.position), 1e-4f, "on the head bone itself: nothing to swing round");
+        Assert.Greater(BubbleBottom(text), head.Find(C.NameTagName).position.y, "above the name tag");
         var quad = text.Find(C.KatObjectName + "/" + C.KatConstraintName + "/" + C.KatTextName);
         Assert.IsNotNull(quad, "KAT's own hierarchy, so its clips still find the text");
         var mat = quad.GetComponent<MeshRenderer>().sharedMaterial;
         Assert.AreEqual(TranslatorChatBubble.ShaderName, mat.shader.name);
+        Assert.AreEqual(TranslatorChatBubble.Lift, mat.GetFloat(TranslatorChatBubble.LiftProperty), 1e-4f, "lifted straight up by the shader");
+        Assert.AreEqual(0f, mat.GetFloat("_GrowEnabled"), "a fixed size: growing with distance made it wobble");
         Assert.IsTrue(mat.HasProperty("_Char0") && mat.HasProperty("_Char127"), "KAT writes the characters here");
         Assert.AreEqual(Resources.Load<Material>(C.KatTextMaterialResource).mainTexture, mat.mainTexture, "KAT's letters");
         Assert.IsNotNull(text.GetComponent<ModularAvatarMergeAnimator>(), "KAT's animator merged here");
