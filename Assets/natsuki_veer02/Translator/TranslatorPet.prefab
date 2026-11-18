@@ -3402,6 +3402,26 @@ MonoBehaviour:
     saved: 0
     hasExplicitDefaultValue: 1
     m_overrideAnimatorDefaults: 0
+  - nameOrPrefix: TranslatorPetSit
+    remapTo: 
+    internalParameter: 0
+    isPrefix: 0
+    syncType: 3
+    localOnly: 0
+    defaultValue: 0
+    saved: 0
+    hasExplicitDefaultValue: 1
+    m_overrideAnimatorDefaults: 0
+  - nameOrPrefix: TranslatorPetWait
+    remapTo: 
+    internalParameter: 0
+    isPrefix: 0
+    syncType: 3
+    localOnly: 0
+    defaultValue: 0
+    saved: 0
+    hasExplicitDefaultValue: 1
+    m_overrideAnimatorDefaults: 0
 --- !u!114 &4142313799667350197
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5304,6 +5324,7 @@ GameObject:
   - component: {fileID: 8012051612387219376}
   - component: {fileID: 7459212626463962949}
   - component: {fileID: 8708488392890797403}
+  - component: {fileID: 5941077354580335486}
   m_Layer: 0
   m_Name: Pet_Follow
   m_TagString: Untagged
@@ -5488,6 +5509,33 @@ MonoBehaviour:
   allowOthers: 0
   receiverType: 0
   parameter: TranslatorPetClose
+  minVelocity: 0.05
+--- !u!114 &5941077354580335486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3598954952858653297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1450912254, guid: 80f1b8067b0760e4bb45023bc2e9de66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rootTransform: {fileID: 0}
+  shapeType: 0
+  radius: 20
+  height: 2
+  position: {x: 0, y: 0, z: 0}
+  rotation: {x: 0, y: 0, z: 0, w: 1}
+  localOnly: 0
+  contentTypes: -1
+  collisionTags:
+  - TranslatorWearer
+  allowSelf: 1
+  allowOthers: 0
+  receiverType: 0
+  parameter: TranslatorPetInRange
   minVelocity: 0.05
 --- !u!1 &3607939966321853870
 GameObject:

@@ -81,6 +81,17 @@ public static class TranslatorConfig
     /// </summary>
     public const string CalledParam = "TranslatorPetCalled";
     public const float CalledSeconds = 2.5f;
+
+    // Spoken commands after her name (the PC app hears them; synced, not in the menu).
+    /// <summary>Sit (座って): she sits on the floor where she is; she gets up when told to, or when the wearer walks off.</summary>
+    public const string SitParam = "TranslatorPetSit";
+    /// <summary>Stay (待ってて): she stays where she is, however far the wearer goes, until called back or WaitRange away.</summary>
+    public const string WaitParam = "TranslatorPetWait";
+    /// <summary>On while the wearer is within WaitRange of her (a contact); leaving it ends the waiting and she respawns.</summary>
+    public const string InRangeParam = "TranslatorPetInRange";
+    public const float WaitRange = 20f;
+    /// <summary>A sitting-on-the-floor motion (humanoid; VRChat's own AFK pose), lowered onto the floor when baked.</summary>
+    public const string PetSitClip = "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_afk.anim";
     /// <summary>
     /// Each side's sensing capsule, lying front to back (SideSenseLength long, so it also covers her when she is
     /// behind the wearer): this radius, its edge SideSenseGap from the wearer's middle (no flip-flop behind them).

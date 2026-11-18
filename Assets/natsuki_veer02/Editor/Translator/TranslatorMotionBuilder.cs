@@ -56,6 +56,7 @@ public static class TranslatorMotionBuilder
             C.PatParam, 0f, holdSeconds: C.HeartsMinSeconds);
         if (petModel != null) TranslatorPetEyes.AddLayer(NewLayer(controller, TranslatorPetWalker.BlinkLayerName), outputDir);
         if (petModel != null) TranslatorPetWalker.AddSideLayer(controller, NewLayer(controller, TranslatorPetModel.SideLayerName), outputDir);
+        if (petModel != null) TranslatorPetCommands.AddWaitLayer(controller, NewLayer(controller, TranslatorPetCommands.WaitLayerName));
         if (petModel == null)
             TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
 

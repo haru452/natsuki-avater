@@ -108,6 +108,8 @@ public static class TranslatorPetModel
         controller.AddParameter(C.VoiceParam, AnimatorControllerParameterType.Float);
         controller.AddParameter(C.ArrivedParam, AnimatorControllerParameterType.Bool);
         controller.AddParameter(C.CloseParam, AnimatorControllerParameterType.Bool);
+        TranslatorPetCommands.EnsureBool(controller, C.SitParam);
+        TranslatorPetCommands.EnsureBool(controller, C.WaitParam);
         var walkBody = Bake(Load(C.PetWalkClip), model, M.RobotPath);
         // Walk: toward the waiting spot (which turns with the wearer), facing it — its own direction of travel,
         // even when the wearer walks backwards. Approach: the same once the wearer stops. Land: a few more steps onto the
@@ -122,13 +124,32 @@ public static class TranslatorPetModel
         var drowsy = State(sm, "Drowsy", 300, (AnimationClip)idle.motion, outputDir, save: false);
         var bored = State(sm, "Bored", 400, Body(Bake(Load(C.PetBoredClip), model, M.RobotPath), Pose.Wait, loop: true), outputDir);
         var wake = State(sm, "Wake", 500, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Wait, loop: false), outputDir);
+        // Told to sit (座って): on the floor where she is. Rise: the wearer walked off (not told to wait), so she
+        // gets up (clearing Sit) and goes as usual.
+        var sit = State(sm, "Sit", 600, Body(Bake(Load(C.PetSitClip), model, M.RobotPath, ground: true), Pose.Wait, loop: true), outputDir);
+        var rise = State(sm, "Rise", 700, (AnimationClip)idle.motion, outputDir, save: false);
+        TranslatorAnimationBuilder.AddDriver(rise, (C.SitParam, 0f));
         sm.defaultState = idle;
 
+        Go(idle, sit, SitDown).AddCondition(AnimatorConditionMode.If, 0f, C.SitParam);
+        // Told to wait (待ってて): she never sets off, so she stays where she is (TranslatorPetCommands ends it at 20 m).
         var setOff = Go(idle, walk, Turn);
         setOff.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
         setOff.AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
-        Go(idle, approach, Turn).AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
-        Go(idle, approach, Turn).AddCondition(AnimatorConditionMode.IfNot, 0f, C.ArrivedParam);
+        setOff.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
+        var goBack = Go(idle, approach, Turn);
+        goBack.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
+        goBack.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
+        var goIn = Go(idle, approach, Turn);
+        goIn.AddCondition(AnimatorConditionMode.IfNot, 0f, C.ArrivedParam);
+        goIn.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
+        Go(sit, idle, SitDown).AddCondition(AnimatorConditionMode.IfNot, 0f, C.SitParam);
+        var leave = Go(sit, rise, 0f);
+        leave.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
+        leave.AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        leave.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
+        Go(rise, idle, 0f).AddCondition(AnimatorConditionMode.IfNot, 0f, C.SitParam);
+        Go(drowsy, sit, SitDown).AddCondition(AnimatorConditionMode.If, 0f, C.SitParam);
         var settle = Go(idle, drowsy, 0f);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepStillSpeed, C.VelocityParam);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepVoiceLevel, C.VoiceParam);
@@ -168,6 +189,8 @@ public static class TranslatorPetModel
     }
 
     const float Turn = 0.3f;
+    /// <summary>Blend into and out of sitting.</summary>
+    const float SitDown = 0.6f;
 
     enum Pose { Walk, Approach, Land, Wait }
 
@@ -197,7 +220,8 @@ public static class TranslatorPetModel
     /// </summary>
     public const string SideLayerName = "Translator_Side";
 
-    public static AnimationClip Bake(AnimationClip source, GameObject model, string robotPath)
+    /// <param name="ground">lower the hips so the lowest point of the model (in the first frame) touches the floor</param>
+    public static AnimationClip Bake(AnimationClip source, GameObject model, string robotPath, bool ground = false)
     {
         var temp = (GameObject)Object.Instantiate(model);
         temp.hideFlags = HideFlags.HideAndDontSave;
@@ -223,6 +247,12 @@ public static class TranslatorPetModel
                     rot[b][f] = q;
                 }
                 if (hips != null) hipPos[f] = hips.localPosition;
+            }
+            if (ground && hips != null)
+            {
+                source.SampleAnimation(temp, 0f);
+                var drop = hips.parent.InverseTransformVector(new Vector3(0f, LowestPoint(temp.transform), 0f));
+                for (int f = 0; f < frames; f++) hipPos[f] -= drop;
             }
 
             var clip = new AnimationClip { frameRate = Fps };
@@ -256,6 +286,20 @@ public static class TranslatorPetModel
     {
         var mesh = model.Find(b.path)?.GetComponent<SkinnedMeshRenderer>()?.sharedMesh;
         return mesh != null && mesh.GetBlendShapeIndex(b.propertyName.Substring("blendShape.".Length)) >= 0;
+    }
+
+    /// <summary>The lowest vertex of the posed model, above (or below) its root.</summary>
+    static float LowestPoint(Transform model)
+    {
+        float min = float.MaxValue;
+        var mesh = new Mesh();
+        foreach (var r in model.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            r.BakeMesh(mesh, true);
+            foreach (var v in mesh.vertices) min = Mathf.Min(min, model.InverseTransformPoint(r.transform.TransformPoint(v)).y);
+        }
+        Object.DestroyImmediate(mesh);
+        return min == float.MaxValue ? 0f : min;
     }
 
     /// <summary>A curve through the samples with straight-line tangents, so 30 fps samples play back smoothly.</summary>
