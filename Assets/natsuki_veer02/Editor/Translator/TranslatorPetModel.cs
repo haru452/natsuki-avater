@@ -115,7 +115,8 @@ public static class TranslatorPetModel
         // even when the wearer walks backwards. Approach: the same once the wearer stops. Land: a few more steps onto the
         // spot. Everything else holds the spot where it is (so walking up to the pet or looking around never moves
         // it) and faces the way the wearer faced; it sets off only once the wearer is no longer close.
-        var idleClip = Body(Bake(Load(C.PetIdleClip), model, M.RobotPath), Pose.Wait, loop: true);
+        var idleRaw = Bake(Load(C.PetIdleClip), model, M.RobotPath);
+        var idleClip = Body(Object.Instantiate(idleRaw), Pose.Wait, loop: true);
         var idle = State(sm, "Idle", 100, idleClip, outputDir);
         var walk = State(sm, "Walk", 200, Body(walkBody, Pose.Walk, loop: true), outputDir);
         // Run: while the wearer runs; the motion keeps pace with them, and RunPull keeps her close.
@@ -129,14 +130,21 @@ public static class TranslatorPetModel
         var drowsy = State(sm, "Drowsy", 300, (AnimationClip)idle.motion, outputDir, save: false);
         var bored = State(sm, "Bored", 400, Body(Bake(Load(C.PetBoredClip), model, M.RobotPath), Pose.Wait, loop: true), outputDir);
         var wake = State(sm, "Wake", 500, Body(Bake(Load(C.PetWakeClip), model, M.RobotPath), Pose.Wait, loop: false), outputDir);
-        // Told to sit (座って): on the floor where she is. Rise: the wearer walked off (not told to wait), so she
-        // gets up (clearing Sit) and goes as usual.
-        var sit = State(sm, "Sit", 600, Body(Bake(Load(C.PetSitClip), model, M.RobotPath, ground: true), Pose.Wait, loop: true), outputDir);
-        var rise = State(sm, "Rise", 700, (AnimationClip)idle.motion, outputDir, save: false);
+        // Told to sit (座って): she squats and sits down on the floor where she is (SitDown), and squats on the way
+        // back up (StandUp). Rise: the wearer walked off (not told to wait), so she gets up (clearing Sit) and goes.
+        var sitRaw = Bake(Load(C.PetSitClip), model, M.RobotPath, ground: true);
+        var crouchRaw = Bake(Load(C.PetCrouchClip), model, M.RobotPath, ground: true);
+        var sit = State(sm, "Sit", 600, Body(Object.Instantiate(sitRaw), Pose.Wait, loop: true), outputDir);
+        var sitDown = State(sm, "SitDown", 550, Body(TranslatorPetPoses.Through(
+            (idleRaw, 0f), (crouchRaw, C.SitDownSeconds * 0.45f), (sitRaw, C.SitDownSeconds)), Pose.Wait, loop: false), outputDir);
+        var standUpClip = Body(TranslatorPetPoses.Through(
+            (sitRaw, 0f), (crouchRaw, C.StandUpSeconds * 0.5f), (idleRaw, C.StandUpSeconds)), Pose.Wait, loop: false);
+        var standUp = State(sm, "StandUp", 650, standUpClip, outputDir);
+        var rise = State(sm, "Rise", 700, standUpClip, outputDir, save: false);
         TranslatorAnimationBuilder.AddDriver(rise, (C.SitParam, 0f));
         sm.defaultState = idle;
 
-        Go(idle, sit, SitDown).AddCondition(AnimatorConditionMode.If, 0f, C.SitParam);
+        Go(idle, sitDown, SitDown).AddCondition(AnimatorConditionMode.If, 0f, C.SitParam);
         // Told to wait (待ってて): she never sets off, so she stays where she is (TranslatorPetCommands ends it at 20 m).
         var setOff = Go(idle, walk, Turn);
         setOff.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
@@ -148,13 +156,16 @@ public static class TranslatorPetModel
         var goIn = Go(idle, approach, Turn);
         goIn.AddCondition(AnimatorConditionMode.IfNot, 0f, C.ArrivedParam);
         goIn.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
-        Go(sit, idle, SitDown).AddCondition(AnimatorConditionMode.IfNot, 0f, C.SitParam);
+        Go(sitDown, sit, 0f, exitTime: 1f);
+        Go(sitDown, standUp, SitDown).AddCondition(AnimatorConditionMode.IfNot, 0f, C.SitParam);
+        Go(sit, standUp, 0f).AddCondition(AnimatorConditionMode.IfNot, 0f, C.SitParam);
+        Go(standUp, idle, SitDown, exitTime: 1f);
         var leave = Go(sit, rise, 0f);
         leave.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
         leave.AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
         leave.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
-        Go(rise, idle, 0f).AddCondition(AnimatorConditionMode.IfNot, 0f, C.SitParam);
-        Go(drowsy, sit, SitDown).AddCondition(AnimatorConditionMode.If, 0f, C.SitParam);
+        Go(rise, idle, SitDown, exitTime: 1f);
+        Go(drowsy, sitDown, SitDown).AddCondition(AnimatorConditionMode.If, 0f, C.SitParam);
         var settle = Go(idle, drowsy, 0f);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepStillSpeed, C.VelocityParam);
         settle.AddCondition(AnimatorConditionMode.Less, C.SleepVoiceLevel, C.VoiceParam);
@@ -196,8 +207,8 @@ public static class TranslatorPetModel
     }
 
     const float Turn = 0.3f;
-    /// <summary>Blend into and out of sitting.</summary>
-    const float SitDown = 0.6f;
+    /// <summary>Blend into and out of the sitting-down and standing-up motions.</summary>
+    const float SitDown = 0.15f;
 
     enum Pose { Walk, Run, Approach, Land, Wait }
 

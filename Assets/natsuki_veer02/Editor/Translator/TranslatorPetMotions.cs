@@ -13,7 +13,8 @@ public static class TranslatorPetMotions
 {
     public const string Dir = "Assets/natsuki_veer02/PetMotions";
     public static string Path(string name) => Dir + "/Pet_" + name + ".anim";
-    public static readonly string Idle = Path("Idle"), Bored = Path("Bored"), Walk = Path("Walk"), Run = Path("Run"), Jump = Path("Jump");
+    public static readonly string Idle = Path("Idle"), Bored = Path("Bored"), Walk = Path("Walk"), Run = Path("Run"), Jump = Path("Jump"),
+        Crouch = Path("Crouch");
 
     const float Fps = 30f;
     const float Tau = Mathf.PI * 2f;
@@ -30,6 +31,7 @@ public static class TranslatorPetMotions
         Save(Walk, WalkMotion(cycle: 1.0f, stride: 0.4f, knee: 0.45f, arms: 0.22f, lean: 0.03f, bob: 0.012f), 1.0f, loop: true);
         Save(Run, WalkMotion(cycle: 0.62f, stride: 0.6f, knee: 0.8f, arms: 0.45f, lean: 0.14f, bob: 0.03f, elbows: 0.25f), 0.62f, loop: true);
         Save(Jump, JumpMotion(), 1.1f, loop: false);
+        Save(Crouch, CrouchPose(), 1f, loop: false);
         AssetDatabase.SaveAssets();
         Debug.Log("[Translator] ペットの動きを作りました: " + Dir);
     }
@@ -116,6 +118,23 @@ public static class TranslatorPetMotions
         m["Spine Front-Back"] = _ => lean;
         m["Spine Twist Left-Right"] = t => 0.06f * Mathf.Sin(Phase(t));
         m["Head Nod Down-Up"] = _ => -lean * 0.5f;
+        return m;
+    }
+
+    /// <summary>Squatting, on the way down to sit (or up from it): knees deep, leaning forward, hands in front.</summary>
+    static Dictionary<string, Curve> CrouchPose()
+    {
+        var m = Stand();
+        foreach (var side in new[] { "Left", "Right" })
+        {
+            m[side + " Upper Leg Front-Back"] = _ => Thigh - 0.8f;
+            m[side + " Lower Leg Stretch"] = _ => Knee - 1.5f;
+            m[side + " Arm Front-Back"] = _ => ArmFront - 0.45f;
+            m[side + " Forearm Stretch"] = _ => 0.6f;
+        }
+        m["Spine Front-Back"] = _ => 0.3f;
+        m["Head Nod Down-Up"] = _ => -0.15f;
+        m["RootT.y"] = _ => Height - 0.35f;
         return m;
     }
 

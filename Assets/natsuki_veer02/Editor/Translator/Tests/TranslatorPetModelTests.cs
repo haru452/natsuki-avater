@@ -100,7 +100,7 @@ public class TranslatorPetModelTests
         Assert.AreEqual("Idle", Layer(P.BodyLayerName).defaultState.name);
         // Only once the wearer is no longer close does it set off (walking up to it never pushes it away).
         string stay = $"&{C.WaitParam}IfNot0";
-        Assert.AreEqual($"Sit:{C.SitParam}If0 | Walk:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}{stay} | Approach:{C.CloseParam}IfNot0{stay} | "
+        Assert.AreEqual($"SitDown:{C.SitParam}If0 | Walk:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}{stay} | Approach:{C.CloseParam}IfNot0{stay} | "
                         + $"Approach:{C.ArrivedParam}IfNot0{stay} | Drowsy:{still}",
             Transitions(State(P.BodyLayerName, "Idle")));
         Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed} | Run:{C.VelocityParam}Greater{C.RunStartSpeed}",
@@ -117,7 +117,7 @@ public class TranslatorPetModelTests
         var drowsy = State(P.BodyLayerName, "Drowsy");
         var toBored = drowsy.transitions.Single(t => t.destinationState.name == "Bored");
         Assert.AreEqual(C.SleepAfterSeconds, toBored.exitTime * Clip(drowsy).length, 0.01f, "one minute");
-        Assert.AreEqual($"Sit:{C.SitParam}If0 | Idle:" + string.Format(back, "Idle"),
+        Assert.AreEqual($"SitDown:{C.SitParam}If0 | Idle:" + string.Format(back, "Idle"),
             string.Join(" | ", drowsy.transitions.Where(t => t != toBored).Select(t =>
                 t.destinationState.name + ":" + string.Join("&", t.conditions.Select(k => k.parameter + k.mode + k.threshold)))));
         Assert.AreEqual("Wake:" + string.Format(back, "Wake"), Transitions(State(P.BodyLayerName, "Bored")));
@@ -456,13 +456,58 @@ public class TranslatorPetModelTests
         var sit = State(P.BodyLayerName, "Sit");
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(Clip(sit)).loopTime);
         Assert.AreEqual(0f, Weight(Clip(sit), C.PetHeadingName, typeof(VRCPositionConstraint), 0), "stays where she is");
-        Assert.AreEqual($"Idle:{C.SitParam}IfNot0 | Rise:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}&{C.WaitParam}IfNot0",
+        Assert.AreEqual($"StandUp:{C.SitParam}IfNot0 | Rise:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}&{C.WaitParam}IfNot0",
             Transitions(sit));
         var rise = State(P.BodyLayerName, "Rise");
         var driver = rise.behaviours.OfType<VRCAvatarParameterDriver>().Single();
         Assert.IsTrue(driver.localOnly, "the wearer's client clears it; the synced flag tells everyone");
         Assert.AreEqual((C.SitParam, 0f), (driver.parameters.Single().name, driver.parameters.Single().value));
-        Assert.AreEqual($"Idle:{C.SitParam}IfNot0", Transitions(rise));
+        Assert.AreEqual("Idle:@1", Transitions(rise), "once she is up (Sit already cleared)");
+    }
+
+    [Test]
+    public void SitDown_SquatsOnTheWay_AndBackUp()
+    {
+        Assert.AreEqual($"Sit:@1 | StandUp:{C.SitParam}IfNot0", Transitions(State(P.BodyLayerName, "SitDown")), "told to stand mid-way: back up");
+        Assert.AreEqual("Idle:@1", Transitions(State(P.BodyLayerName, "StandUp")));
+        var down = Clip(State(P.BodyLayerName, "SitDown"));
+        Assert.AreEqual(C.SitDownSeconds, down.length, 0.01f);
+        Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(down).loopTime, "once");
+        var (start, startLow) = Posed(down, 0f);
+        var (squat, squatLow) = Posed(down, C.SitDownSeconds * 0.45f);
+        var (end, endLow) = Posed(down, C.SitDownSeconds);
+        var (sitting, _) = Posed(Clip(State(P.BodyLayerName, "Sit")), 0f);
+        Assert.Less(squat, start - 0.1f, "her head comes down in the squat");
+        Assert.AreEqual(sitting, end, 0.01f, "and ends as she sits");
+        Assert.AreEqual(0f, squatLow, 0.05f, "feet on the floor while squatting");
+        Assert.AreEqual(0f, startLow, 0.05f);
+        Assert.AreEqual(0f, endLow, 0.03f);
+        var up = Clip(State(P.BodyLayerName, "StandUp"));
+        Assert.AreEqual(sitting, Posed(up, 0f).head, 0.01f, "stands up from where she sits");
+        Assert.AreEqual(start, Posed(up, up.length).head, 0.02f, "to standing");
+    }
+
+    /// <summary>Her head's height and her lowest point above the floor, posed by the clip at t (on a copy).</summary>
+    (float head, float lowest) Posed(AnimationClip clip, float t)
+    {
+        var robot = (GameObject)Object.Instantiate(Find(RobotPath).gameObject);
+        try
+        {
+            clip.SampleAnimation(Wrap(robot), t);
+            float min = float.MaxValue;
+            var mesh = new Mesh();
+            foreach (var r in robot.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                r.BakeMesh(mesh, true);
+                foreach (var v in mesh.vertices) min = Mathf.Min(min, robot.transform.InverseTransformPoint(r.transform.TransformPoint(v)).y);
+            }
+            Object.DestroyImmediate(mesh);
+            return (robot.transform.InverseTransformPoint(P.Head(robot.transform).position).y, min);
+        }
+        finally
+        {
+            Object.DestroyImmediate(robot.transform.root.gameObject);
+        }
     }
 
     [Test]
