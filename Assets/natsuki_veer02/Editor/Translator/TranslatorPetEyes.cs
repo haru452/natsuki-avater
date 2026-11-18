@@ -35,6 +35,9 @@ public static class TranslatorPetEyes
             Go(s, happy, 0.1f).AddCondition(AnimatorConditionMode.If, 0f, C.PatParam);
         Go(glance, seen, 0f, exitTime: 1f);
         Go(seen, blink, 0f).AddCondition(AnimatorConditionMode.IfNot, 0f, C.LookedParam);
+        // Called by name: the same smile, even while already looked at.
+        foreach (var s in new[] { blink, seen })
+            Go(s, glance, 0f).AddCondition(AnimatorConditionMode.If, 0f, C.CalledParam);
     }
 
     /// <summary>Open, shut and open again quickly at the end of every BlinkSeconds; no smile, highlights on.</summary>

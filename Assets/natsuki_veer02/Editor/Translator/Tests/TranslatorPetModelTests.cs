@@ -171,7 +171,7 @@ public class TranslatorPetModelTests
         Assert.IsFalse(AnimationUtility.GetAnimationClipSettings(clip).loopTime);
         StringAssert.StartsWith($"Happy:{C.PatParam}If0 | Glance:{C.LookedParam}If0", Transitions(State(eyes, "Blink")));
         Assert.AreEqual($"Happy:{C.PatParam}If0 | Seen:@1", Transitions(glance));
-        Assert.AreEqual($"Happy:{C.PatParam}If0 | Blink:{C.LookedParam}IfNot0", Transitions(State(eyes, "Seen")));
+        Assert.AreEqual($"Happy:{C.PatParam}If0 | Blink:{C.LookedParam}IfNot0 | Glance:{C.CalledParam}If0", Transitions(State(eyes, "Seen")));
     }
 
     [Test]
@@ -394,7 +394,36 @@ public class TranslatorPetModelTests
         var toggle = menu.controls.Single(c => c.name == C.MirrorLabel);
         Assert.AreEqual(C.MirrorParam, toggle.parameter.name);
         Assert.IsTrue(c.parameters.Any(x => x.name == C.MirrorParam));
-        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 1, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it");
+        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 2, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call)");
+    }
+
+    // ---- Called by name (the PC app hears it and sets CalledParam for a moment) ----
+
+    [Test]
+    public void Called_IsASyncedFlag_NotInTheMenu()
+    {
+        var p = prefab.GetComponent<ModularAvatarParameters>().parameters.Single(x => x.nameOrPrefix == C.CalledParam);
+        Assert.AreEqual(ParameterSyncType.Bool, p.syncType, "everyone sees her turn");
+        Assert.IsFalse(p.saved);
+        var menu = prefab.GetComponent<ModularAvatarMenuInstaller>().menuToAppend.controls.Single().subMenu;
+        Assert.IsFalse(menu.controls.Any(x => x.parameter != null && x.parameter.name == C.CalledParam), "the app sets it, not the wearer");
+        Assert.IsTrue(c.parameters.Any(x => x.name == C.CalledParam));
+    }
+
+    [Test]
+    public void Called_SheTurnsToTheWearerForAMoment_AndSmiles()
+    {
+        var look = M.LookLayerName;
+        var called = State(look, "Called");
+        Assert.AreEqual($"Look:{C.LookedParam}If0 | Called:{C.CalledParam}If0", Transitions(State(look, "Away")));
+        Assert.AreEqual($"Look:{C.LookedParam}If0 | Away:@1", Transitions(called), "looked at meanwhile: keeps looking");
+        Assert.AreEqual(C.CalledSeconds, Clip(called).length, 0.01f);
+        var lookClip = Clip(State(look, "Look"));
+        foreach (var b in AnimationUtility.GetCurveBindings(lookClip))
+            Assert.AreEqual(AnimationUtility.GetEditorCurve(lookClip, b).Evaluate(0f),
+                AnimationUtility.GetEditorCurve(Clip(called), b).Evaluate(C.CalledSeconds * 0.9f), b.path + " " + b.propertyName + ": faces her like a look");
+
+        StringAssert.Contains($"Glance:{C.CalledParam}If0", Transitions(State(TranslatorPetWalker.BlinkLayerName, "Blink")), "smiles");
     }
 
     [Test]
