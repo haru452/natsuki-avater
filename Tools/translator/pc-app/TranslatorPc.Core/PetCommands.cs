@@ -1,12 +1,14 @@
-// Spoken commands after the pet's name (Japanese only, matched in hiragana, no Gemini): sit, wait, come, stand up.
+// Spoken commands after the pet's name (Japanese only, matched in hiragana, no Gemini): sit, wait, come, stand up,
+// turn round and face front.
 namespace TranslatorPc.Core;
 
-public enum PetCommand { Sit, Wait, Come, Stand }
+public enum PetCommand { Sit, Wait, Come, Stand, TurnAround, FaceFront }
 
 public static class PetCommands
 {
     public const string SitParam = Kat.Prefix + "TranslatorPetSit";
     public const string WaitParam = Kat.Prefix + "TranslatorPetWait";
+    public const string TurnParam = Kat.Prefix + "TranslatorPetTurn";
 
     /// <summary>
     /// The phrases for each command, in hiragana (katakana and kanji are matched by their reading: 座って → すわって).
@@ -36,6 +38,17 @@ public static class PetCommands
         {
             "たって", "たちあがって", "たっていいよ", "たってみて", "たちなさい", "おきて", "おきあがって", "すたんどあっぷ",
         },
+        [nameof(PetCommand.TurnAround)] = new()
+        {
+            "うしろむいて", "うしろをむいて", "うしろむいてて", "うしろむいてみて", "うしろむいてね", "うしろむけ", "うしろむきに",
+            "うしろみて", "うしろをみて", "せなかむけて", "せなかをむけて", "あっちむいて", "あっちをむいて", "むこうむいて",
+            "むこうをむいて", "まわれみぎ", "はんたいむいて", "はんたいをむいて",
+        },
+        [nameof(PetCommand.FaceFront)] = new()
+        {
+            "まえむいて", "まえをむいて", "まえむいてて", "まえむいてね", "まえむいていいよ", "まえむけ", "まえみて", "まえをみて",
+            "こっちむいて", "こっちをむいて", "こっちみて", "こっちをみて", "ふりむいて", "もとにもどって", "もとどおり",
+        },
     };
 
     /// <summary>The command said in this sentence, or null. Names are taken out first, so a name never reads as a command.</summary>
@@ -64,7 +77,9 @@ public static class PetCommands
     {
         PetCommand.Sit => new[] { (SitParam, true) },
         PetCommand.Wait => new[] { (WaitParam, true) },
-        PetCommand.Come => new[] { (WaitParam, false), (SitParam, false) },
+        PetCommand.Come => new[] { (WaitParam, false), (SitParam, false), (TurnParam, false) },
+        PetCommand.TurnAround => new[] { (TurnParam, true) },
+        PetCommand.FaceFront => new[] { (TurnParam, false) },
         _ => new[] { (SitParam, false) },
     };
 
@@ -72,7 +87,9 @@ public static class PetCommands
     {
         PetCommand.Sit => "座る",
         PetCommand.Wait => "待つ",
-        PetCommand.Come => "来る（待つ・座るをやめる）",
+        PetCommand.Come => "来る（待つ・座る・後ろ向きをやめる）",
+        PetCommand.TurnAround => "後ろを向く",
+        PetCommand.FaceFront => "前を向く",
         _ => "立つ",
     };
 }

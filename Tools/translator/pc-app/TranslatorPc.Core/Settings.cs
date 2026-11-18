@@ -27,7 +27,10 @@ public class Settings
     {
         try
         {
-            return File.Exists(path) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(path)) ?? new Settings() : new Settings();
+            var s = File.Exists(path) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(path)) ?? new Settings() : new Settings();
+            // Commands added since the file was saved get their default phrases.
+            foreach (var (command, phrases) in PetCommands.Defaults()) s.PetCommandWords.TryAdd(command, phrases);
+            return s;
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {

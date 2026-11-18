@@ -39,6 +39,20 @@ public class PetCommandsTests
     public void Stand(string text, string kana) => Assert.Equal(PetCommand.Stand, Find(text, kana));
 
     [Theory]
+    [InlineData("後ろ向いて", "うしろむいて")]
+    [InlineData("後ろを向いてみて", "うしろをむいてみて")]
+    [InlineData("あっち向いて", "あっちむいて")]
+    [InlineData("背中向けて", "せなかむけて")]
+    public void TurnAround(string text, string kana) => Assert.Equal(PetCommand.TurnAround, Find(text, kana));
+
+    [Theory]
+    [InlineData("前向いて", "まえむいて")]
+    [InlineData("前を向いて", "まえをむいて")]
+    [InlineData("こっち向いて", "こっちむいて")]
+    [InlineData("振り向いて", "ふりむいて")]
+    public void FaceFront(string text, string kana) => Assert.Equal(PetCommand.FaceFront, Find(text, kana));
+
+    [Theory]
     [InlineData("おはよう", "おはよう")]
     [InlineData("ほまれ", "ほまれ")]
     [InlineData("Sit down", "")] // Japanese only
@@ -57,7 +71,11 @@ public class PetCommandsTests
     {
         Assert.Equal(new[] { (PetCommands.SitParam, true) }, PetCommands.Parameters(PetCommand.Sit));
         Assert.Equal(new[] { (PetCommands.WaitParam, true) }, PetCommands.Parameters(PetCommand.Wait));
-        Assert.Equal(new[] { (PetCommands.WaitParam, false), (PetCommands.SitParam, false) }, PetCommands.Parameters(PetCommand.Come));
+        Assert.Equal(new[] { (PetCommands.WaitParam, false), (PetCommands.SitParam, false), (PetCommands.TurnParam, false) },
+            PetCommands.Parameters(PetCommand.Come));
+        Assert.Equal(new[] { (PetCommands.TurnParam, true) }, PetCommands.Parameters(PetCommand.TurnAround));
+        Assert.Equal(new[] { (PetCommands.TurnParam, false) }, PetCommands.Parameters(PetCommand.FaceFront));
+        Assert.Equal("/avatar/parameters/TranslatorPetTurn", PetCommands.TurnParam);
         Assert.Equal(new[] { (PetCommands.SitParam, false) }, PetCommands.Parameters(PetCommand.Stand));
         Assert.Equal("/avatar/parameters/TranslatorPetSit", PetCommands.SitParam);
         Assert.Equal("/avatar/parameters/TranslatorPetWait", PetCommands.WaitParam);
@@ -103,6 +121,21 @@ public class PetCommandsTests
         var call = Make();
         Assert.Null(call.Hear("ちょっと待って", "ちょっとまって", S));
         Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void OlderSettingsGetTheNewCommands()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var path = Path.Combine(dir, "settings.json");
+            File.WriteAllText(path, "{\"PetCommandWords\":{\"Sit\":[\"ざぶとん\"]}}");
+            var s = Settings.Load(path);
+            Assert.Equal(new[] { "ざぶとん" }, s.PetCommandWords["Sit"]);
+            Assert.Contains("うしろむいて", s.PetCommandWords["TurnAround"]);
+        }
+        finally { Directory.Delete(dir, true); }
     }
 
     [Fact]
