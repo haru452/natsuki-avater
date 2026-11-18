@@ -537,6 +537,25 @@ public class TranslatorPetModelTests
         Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(Clip(run)).loopTime);
     }
 
+    // VRChat's proxy_ clips are one-frame stand-ins (VRChat swaps in its own motions at run time): baked, they
+    // freeze. Her own motions (TranslatorPetMotions) really move.
+    [TestCase("Idle", true)]
+    [TestCase("Bored", true)]
+    [TestCase("Walk", true)]
+    [TestCase("Run", true)]
+    [TestCase("Jump", false)]
+    public void OwnMotions_AreRealHumanoidMotions(string name, bool loop)
+    {
+        var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(TranslatorPetMotions.Path(name));
+        Assert.IsNotNull(clip, name);
+        Assert.IsTrue(clip.humanMotion, name + " is humanoid, so it fits any model");
+        Assert.Greater(clip.length, 0.5f, name + " moves (not a one-frame pose)");
+        Assert.AreEqual(loop, clip.isLooping, name);
+    }
+
+    [Test]
+    public void Run_IsAMovingMotion() => Assert.Greater(Clip(State(P.BodyLayerName, "Run")).length, 0.3f);
+
     [Test]
     public void Run_PlaysOnTheSpot()
     {
