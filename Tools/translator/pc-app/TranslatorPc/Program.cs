@@ -176,8 +176,8 @@ static class Program
         foreach (var text in sentences)
         {
             var reading = kana.ToKana(text);
-            bool name = PetCall.Heard(text, reading, settings.PetNames);
-            var command = PetCommands.Find(text, reading, settings.PetCommandWords, settings.PetNames);
+            bool name = PetCall.Heard(text, reading, settings.PetCallNames);
+            var command = PetCommands.Find(text, reading, settings.PetCommandWords, settings.PetCallNames);
             Console.WriteLine($"{text} → かな: {reading} / 名前: {(name ? "あり" : "なし")} / 命令: "
                               + (command is PetCommand c ? PetCommands.Describe(c) : "なし"));
         }
@@ -194,8 +194,8 @@ static class Program
         // What the pet would make of it (her name in any recognizer's text, the command in the chosen one).
         var reading = heard.Lang == Lang.JA ? kana.ToKana(heard.Text) : "";
         var also = string.Join(" ", heard.AllTexts.Skip(1));
-        bool name = PetCall.Heard(heard.Text, reading, settings.PetNames) || PetCall.Heard(also, "", settings.PetNames);
-        var command = PetCommands.Find(heard.Text, reading, settings.PetCommandWords, settings.PetNames);
+        bool name = PetCall.Heard(heard.Text, reading, settings.PetCallNames) || PetCall.Heard(also, "", settings.PetCallNames);
+        var command = PetCommands.Find(heard.Text, reading, settings.PetCommandWords, settings.PetCallNames);
         Console.WriteLine($"ペット: 名前 {(name ? "あり" : "なし")} / 命令 {(command is PetCommand c ? PetCommands.Describe(c) : "なし")}"
                           + (also.Length > 0 ? $"（もう一方の認識: {also}）" : ""));
         if (heard.Lang != Lang.JA)
