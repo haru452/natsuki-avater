@@ -1,12 +1,28 @@
 # TODO
 
+## 「ピースして」でピースする（2026-11-19 にやる）
+
+「ちゃん、ピースして」と言ったら、ほまれがピースする。今の「座って」「待ってて」と同じ作り。
+決まっていないこと（決まらなければ **右手・3 秒・止まっているときだけ**）: どちらの手か（右・左・両手）／何秒か（「やめて」まで続けるか）／歩いている途中に言われたらどうするか。
+
+1. **アプリ（`translator-app`、`Tools/translator/pc-app`）**: `PetCommand` に `Peace` を足す。
+   - 言い方: 「ぴーすして」「ぴーす」「ぴーすしてみて」「ぶいさいん」「ぶいして」など（ひらがなで `PetCommands.Defaults()` に）。
+   - 送る合図: 同期 Bool `TranslatorPetPeace` を true。`PetCommandsTests` に判定とパラメーターのテストを足す。
+2. **アバター（`pet-riko2`。ナツキにも入れるなら `pet-muryotaisu` から）**:
+   - ポーズを自前で作る（`TranslatorPetMotions` に `Pet_Peace`: 右腕を顔の横へ、人差し指と中指を伸ばし、ほかの指は曲げる）。Mixamo などは使わない。
+   - FX に Peace の層（またはBody 層の状態）: `TranslatorPetPeace` で入り、笑顔（`Fcl_ALL_Joy`）で数秒ピース → 自分のクライアントでドライバーが false に戻す（`FaceEnd` と同じやり方）。
+   - **どの状態にも必ずアニメを入れる**（空の状態があるとアバター全体が固まった。テストあり）。
+   - 頭の「見る」コンストレイントがアニメを上書きするので、頭や体の向きを動かすなら確認する。
+   - パラメーターが 1 ビット増える（`TranslatorBudget` のテストの数を直す）。
+   - テスト → Build Prefab → riko2 に置き直し → アップロードして VRChat で確認。
+
 ## 翻訳に DeepL の代わりに Gemini も選べるようにする（未着手・2026-11-18 に相談）
 
 DeepL API は登録（キーの取得）が面倒なので、Gemini API でも訳せるようにして、どちらを使うか選べるようにする。
 作業は `translator-app` ブランチ（`Tools/translator/pc-app`）。
 
-1. **設定に「翻訳に使うもの」を足す**: `Settings` に `Translator`（`DeepL` / `Gemini`）と `GeminiKey` を足す。
-   - 画面のキー操作で切り替えとキーの入力ができるようにする（例: **G** = Gemini のキー、**T** = DeepL ⇄ Gemini）。
+1. **設定に「翻訳に使うもの」を足す**: `Settings` に `Translator`（`DeepL` / `Gemini`）を足す。
+   - `GeminiKey` と **G**（キーの入力）は、ほまれとの会話（`PetChat`、2026-11-18）で作ってあるので、それを使う。**T** = DeepL ⇄ Gemini を足す。
    - キーは DeepL と同じく `settings.json` に保存し、画面には出さない。
 2. **Gemini で訳す部分を作る**: `ITranslator` を実装した `GeminiTranslator` を足す（今の `DeepL.cs` と同じ形）。
    - 送るのは声ではなく、PC の中で文字にした文だけ。
