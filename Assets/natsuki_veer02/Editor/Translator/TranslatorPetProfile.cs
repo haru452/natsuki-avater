@@ -39,7 +39,7 @@ public sealed class TranslatorPetProfile
         Highlight = "EyeLight",
     };
 
-    /// <summary>riko2 (VRoid). Borrows Muryotaisu's motions until she has her own.</summary>
+    /// <summary>Homare: riko2 (VRoid). Borrows Muryotaisu's motions until she has her own.</summary>
     public static readonly TranslatorPetProfile Riko2 = new TranslatorPetProfile
     {
         ModelPath = "Assets/riko2/Prefab/riko2.prefab",

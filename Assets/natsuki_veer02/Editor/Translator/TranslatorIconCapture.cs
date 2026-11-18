@@ -4,7 +4,7 @@ using UnityEngine;
 using C = TranslatorConfig;
 
 /// <summary>
-/// A face photo of the pet (Natsuki) for her name tag: the model alone in front of a plain background,
+/// A face photo of the pet (Homare) for her name tag: the model alone in front of a plain background,
 /// a camera a little in front of her head. Saved as NameTagIconSource (square PNG).
 /// </summary>
 public static class TranslatorIconCapture
@@ -49,7 +49,7 @@ public static class TranslatorIconCapture
             for (var t = subject; t != null; t = t.parent) t.gameObject.SetActive(true); // the pet waits switched off
             if (text != null) ShowText(subject, text);
             var animator = subject.GetComponent<Animator>();
-            var head = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : TranslatorPetModel.FindDeep(subject, "Head");
+            var head = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : TranslatorPetModel.Head(subject);
             var face = head != null ? head.position + Vector3.up * 0.09f : subject.position + new Vector3(0, 1.4f, 0);
 
             var light = lightGo.AddComponent<Light>();

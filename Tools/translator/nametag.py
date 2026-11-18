@@ -4,7 +4,7 @@ Reads Assets/natsuki_veer02/Translator/NameTag_Icon.png (TranslatorIconCapture),
 from PIL import Image, ImageDraw, ImageFont
 
 DIR = "Assets/natsuki_veer02/Translator/"
-NAME, PRONOUN, STATUS = "Natsuki2026", "AI", "Xin Chao"
+NAME, PRONOUN, STATUS = "Homare2026", "AI", "Xin Chao"
 FONT = "C:/Windows/Fonts/segoeui.ttf"
 S = 2  # drawn at twice the size, then shrunk: smooth edges
 W, H = 768, 256
