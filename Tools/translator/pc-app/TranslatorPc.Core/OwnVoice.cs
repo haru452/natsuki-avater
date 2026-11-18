@@ -154,12 +154,12 @@ public class OwnVoice
         }
         var source = heard.Lang;
         var kanaOriginal = source == Lang.JA ? kana.ToKana(heard.Text) : "";
-        // Her name: she reacts at once, without waiting for DeepL.
-        if (petCall != null && PetCall.Heard(heard.Text, kanaOriginal, settings.PetNames))
+        // Her name (and a command after it): she reacts at once, without waiting for DeepL.
+        if (petCall != null)
         {
-            bool called = false;
-            IfCurrent(gen, () => { petCall.Call(); called = true; });
-            if (called) say("名前を呼ばれました: " + heard.Text);
+            string? reaction = null;
+            IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings));
+            if (reaction != null) say(reaction);
         }
         bool translating;
         lock (gate) translating = Translating;

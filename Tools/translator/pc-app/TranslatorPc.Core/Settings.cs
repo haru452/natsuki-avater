@@ -16,6 +16,8 @@ public class Settings
     public int KatSync { get; set; } = 8;
     /// <summary>Saying one of these makes the pet turn and smile (PetCall): Homare (誉) and Natsuki.</summary>
     public List<string> PetNames { get; set; } = new() { "ほまれ", "誉", "homare", "なつき", "natsuki" };
+    /// <summary>Phrases for Sit / Wait / Come / Stand, said after her name (PetCommands; hiragana, Japanese only).</summary>
+    public Dictionary<string, List<string>> PetCommandWords { get; set; } = PetCommands.Defaults();
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCTranslatorPC", "settings.json");

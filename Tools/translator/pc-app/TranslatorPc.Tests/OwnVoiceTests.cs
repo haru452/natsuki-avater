@@ -143,7 +143,7 @@ public class OwnVoiceTests
     [Fact]
     public void HerName_CallsThePet_BeforeTranslating()
     {
-        stt.Answer = new(Lang.JA, "誉、おいで", true);
+        stt.Answer = new(Lang.JA, "誉、元気？", true);
         var sent = new List<string>();
         int translatedWhenCalled = -1;
         var call = new PetCall(p => { sent.Add(Osc.Parse(p).Address); translatedWhenCalled = translator.Calls.Count; }, () => now);
@@ -175,7 +175,7 @@ public class OwnVoiceTests
         Assert.False(p.Translating);
         Assert.Equal(new[] { "clear" }, display.Events);
 
-        stt.Answer = new(Lang.JA, "誉、おいで", true);
+        stt.Answer = new(Lang.JA, "誉、元気？", true);
         Speak(p);
         p.ProcessNext(0);
         Assert.Equal(new[] { PetCall.CalledParam }, sent);

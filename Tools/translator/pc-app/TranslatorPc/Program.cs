@@ -22,6 +22,7 @@ static class Program
         Console.Title = "VRC Translator PC";
         var settings = Settings.Load(Settings.DefaultPath);
         var screen = new Screen();
+        if (args.Length >= 2 && args[0] == "--test-command") return TestCommand(args.Skip(1), settings);
 
         // Next to the exe (AppContext.BaseDirectory is the single-file extraction folder).
         string exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
@@ -147,6 +148,21 @@ static class Program
     }
 
     /// <summary>Recognize and translate one WAV file (16 kHz mono 16-bit) and print the result: a check without VRChat.</summary>
+    /// <summary>--test-command "誉、座って" …: the kana reading, and whether her name and a command are heard (no microphone).</summary>
+    static int TestCommand(IEnumerable<string> sentences, Settings settings)
+    {
+        using var kana = new MeCabKana();
+        foreach (var text in sentences)
+        {
+            var reading = kana.ToKana(text);
+            bool name = PetCall.Heard(text, reading, settings.PetNames);
+            var command = PetCommands.Find(text, reading, settings.PetCommandWords, settings.PetNames);
+            Console.WriteLine($"{text} → かな: {reading} / 名前: {(name ? "あり" : "なし")} / 命令: "
+                              + (command is PetCommand c ? PetCommands.Describe(c) : "なし"));
+        }
+        return 0;
+    }
+
     static int TestWav(string path, IRecognizer stt, ITranslator deepl, IKana kana, Settings settings)
     {
         var pcm = Wav.Read(path);
