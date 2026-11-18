@@ -87,14 +87,42 @@ public static class TranslatorPetCommands
         Go(clear, front, AnimatorConditionMode.IfNot, C.TurnParam);
     }
 
-    /// <summary>Turned round, she does not turn back to face whoever looks or calls (Look layer: Away, Look, Called).</summary>
+    /// <summary>
+    /// こっち向いて (FaceParam): from Away, Look or Called she turns to the wearer and holds it (Facing, the Look clip)
+    /// after the smile is over. Told otherwise (FaceParam off) she looks away; setting off after the wearer, FaceEnd
+    /// clears it on her wearer's client (a driver; the sync tells the rest).
+    /// </summary>
+    public static void AddFacing(AnimatorController controller, AnimatorStateMachine look)
+    {
+        foreach (var p in new[] { C.FaceParam, C.CloseParam, C.WaitParam }) EnsureBool(controller, p);
+        var states = look.states.Select(s => s.state).ToArray();
+        var away = states.Single(s => s.name == "Away");
+        var looking = states.Single(s => s.name == "Look");
+        var facing = look.AddState("Facing", new Vector3(550, 350));
+        var end = look.AddState("FaceEnd", new Vector3(300, 350));
+        foreach (var s in new[] { facing, end })
+        {
+            s.motion = looking.motion; // never motionless: an empty state froze the avatar
+            s.writeDefaultValues = false;
+        }
+        TranslatorAnimationBuilder.AddDriver(end, (C.FaceParam, 0f));
+        foreach (var from in states.Where(s => s.name is "Away" or "Look" or "Called"))
+            Go(from, facing, AnimatorConditionMode.If, C.FaceParam).duration = C.LookTurnSeconds;
+        Go(facing, away, AnimatorConditionMode.IfNot, C.FaceParam).duration = C.LookTurnSeconds;
+        var leave = Go(facing, end, AnimatorConditionMode.IfNot, C.CloseParam);
+        leave.AddCondition(AnimatorConditionMode.Greater, C.HopStartSpeed, C.VelocityParam);
+        leave.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam);
+        Go(end, away, AnimatorConditionMode.IfNot, C.FaceParam).duration = C.LookTurnSeconds;
+    }
+
+    /// <summary>Turned round, she does not turn back to face whoever looks or calls (Look layer: Away, Look, Called, Facing).</summary>
     public static void NoLookWhileTurned(AnimatorStateMachine look)
     {
         var states = look.states.Select(s => s.state).ToArray();
-        foreach (var t in states.SelectMany(s => s.transitions).Where(t => t.destinationState.name is "Look" or "Called"))
+        foreach (var t in states.SelectMany(s => s.transitions).Where(t => t.destinationState.name is "Look" or "Called" or "Facing"))
             t.AddCondition(AnimatorConditionMode.IfNot, 0f, C.TurnParam);
         var away = states.Single(s => s.name == "Away");
-        foreach (var from in states.Where(s => s.name is "Look" or "Called"))
+        foreach (var from in states.Where(s => s.name is "Look" or "Called" or "Facing"))
         {
             var t = from.AddTransition(away);
             t.hasExitTime = false;

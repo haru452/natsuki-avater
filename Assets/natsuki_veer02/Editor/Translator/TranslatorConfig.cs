@@ -100,6 +100,8 @@ public static class TranslatorConfig
     public const float NodSeconds = 0.9f;
     /// <summary>Turn round (後ろ向いて): she faces away until told to face front again or she sets off (synced).</summary>
     public const string TurnParam = "TranslatorPetTurn";
+    /// <summary>こっち向いて: she keeps looking at the wearer until she sets off after them (synced; the app sets it).</summary>
+    public const string FaceParam = "TranslatorPetFace";
     public const float TurnSeconds = 0.6f;
     /// <summary>The squat she passes through on the way down to sit and back up (TranslatorPetMotions).</summary>
     public const string PetCrouchClip = "Assets/natsuki_veer02/PetMotions/Pet_Crouch.anim";

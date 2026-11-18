@@ -50,6 +50,7 @@ public static class TranslatorMotionBuilder
         var lookLayer = BuildTwoStateLayer(controller, LookLayerName, outputDir, "Away", away, "Look", look,
             C.LookedParam, C.LookTurnSeconds, holdSeconds: 0f);
         if (petModel != null) AddCalled(controller, lookLayer, look, outputDir);
+        if (petModel != null) TranslatorPetCommands.AddFacing(controller, lookLayer);
         var calm = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame);
         var hearts = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds);
         BuildTwoStateLayer(controller, PatLayerName, outputDir, "Calm", calm, "Hearts", hearts,

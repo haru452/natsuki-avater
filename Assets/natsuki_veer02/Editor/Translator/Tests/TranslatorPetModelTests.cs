@@ -437,7 +437,7 @@ public class TranslatorPetModelTests
         var toggle = menu.controls.Single(c => c.name == C.MirrorLabel);
         Assert.AreEqual(C.MirrorParam, toggle.parameter.name);
         Assert.IsTrue(c.parameters.Any(x => x.name == C.MirrorParam));
-        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 6, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit, wait, turn and gaze adjustment)");
+        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 7, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit, wait, turn, gaze adjustment and face)");
     }
 
     // ---- Called by name (the PC app hears it and sets CalledParam for a moment) ----
@@ -459,8 +459,9 @@ public class TranslatorPetModelTests
         var look = M.LookLayerName;
         var called = State(look, "Called");
         string front = $"&{C.TurnParam}IfNot0";
-        Assert.AreEqual($"Look:{C.LookedParam}If0{front} | Called:{C.CalledParam}If0{front}", Transitions(State(look, "Away")));
-        Assert.AreEqual($"Look:{C.LookedParam}If0{front} | Away:@1 | Away:{C.TurnParam}If0", Transitions(called), "looked at meanwhile: keeps looking");
+        string facing = $" | Facing:{C.FaceParam}If0{front}";
+        Assert.AreEqual($"Look:{C.LookedParam}If0{front} | Called:{C.CalledParam}If0{front}{facing}", Transitions(State(look, "Away")));
+        Assert.AreEqual($"Look:{C.LookedParam}If0{front} | Away:@1{facing} | Away:{C.TurnParam}If0", Transitions(called), "looked at meanwhile: keeps looking");
         Assert.AreEqual(C.CalledSeconds, Clip(called).length, 0.01f);
         var lookClip = Clip(State(look, "Look"));
         foreach (var b in AnimationUtility.GetCurveBindings(lookClip))

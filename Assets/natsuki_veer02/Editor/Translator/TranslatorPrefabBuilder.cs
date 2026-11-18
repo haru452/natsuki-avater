@@ -156,6 +156,7 @@ public static class TranslatorPrefabBuilder
         if (mirror) list.Add(Param(C.WaitParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.TurnParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.GazeAdjustParam, ParameterSyncType.Bool, saved: false));
+        if (mirror) list.Add(Param(C.FaceParam, ParameterSyncType.Bool, saved: false));
         return list;
     }
 
