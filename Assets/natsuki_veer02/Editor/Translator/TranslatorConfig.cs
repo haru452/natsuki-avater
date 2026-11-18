@@ -90,6 +90,10 @@ public static class TranslatorConfig
     /// <summary>On while the wearer is within WaitRange of her (a contact); leaving it ends the waiting and she respawns.</summary>
     public const string InRangeParam = "TranslatorPetInRange";
     public const float WaitRange = 20f;
+    /// <summary>The squat she passes through on the way down to sit and back up (TranslatorPetMotions).</summary>
+    public const string PetCrouchClip = "Assets/natsuki_veer02/PetMotions/Pet_Crouch.anim";
+    public const float SitDownSeconds = 1.2f;
+    public const float StandUpSeconds = 1.0f;
     /// <summary>A sitting-on-the-floor motion (humanoid; VRChat's own AFK pose), lowered onto the floor when baked.</summary>
     public const string PetSitClip = "Packages/com.vrchat.avatars/Samples/AV3 Demo Assets/Animation/ProxyAnim/proxy_afk.anim";
     /// <summary>
