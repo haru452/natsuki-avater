@@ -103,7 +103,8 @@ public class TranslatorPetModelTests
         Assert.AreEqual($"Sit:{C.SitParam}If0 | Walk:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}{stay} | Approach:{C.CloseParam}IfNot0{stay} | "
                         + $"Approach:{C.ArrivedParam}IfNot0{stay} | Drowsy:{still}",
             Transitions(State(P.BodyLayerName, "Idle")));
-        Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Walk")));
+        Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed} | Run:{C.VelocityParam}Greater{C.RunStartSpeed}",
+            Transitions(State(P.BodyLayerName, "Walk")));
         // Near the spot it jumps the last bit instead of sliding in.
         Assert.AreEqual($"Walk:{C.VelocityParam}Greater{C.HopStartSpeed} | Land:{C.ArrivedParam}If0",
             Transitions(State(P.BodyLayerName, "Approach")));
@@ -269,6 +270,7 @@ public class TranslatorPetModelTests
         AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(path, type, "Sources.source" + source + ".Weight")).Evaluate(0f);
 
     [TestCase("Walk", 1f, 0f, 1000f, 0f)]
+    [TestCase("Run", 1f, 0f, 1000f, 0.15f)]
     [TestCase("Approach", 1f, 0f, 1000f, 0f)]
     [TestCase("Land", 1f, 0f, 0f, 0.15f)]
     [TestCase("Idle", 0f, 1f, 0f, 0f)]
@@ -520,6 +522,36 @@ public class TranslatorPetModelTests
         Assert.IsTrue(driver.localOnly);
         CollectionAssert.AreEquivalent(new[] { (C.WaitParam, 0f), (C.SitParam, 0f) }, driver.parameters.Select(x => (x.name, x.value)));
         Assert.AreEqual($"Free:{C.WaitParam}IfNot0", Transitions(State(layer, "TooFar")));
+    }
+
+    // ---- Running with the wearer ----
+
+    [Test]
+    public void Run_WhileTheWearerRuns_AtTheirPace_PulledClose()
+    {
+        var run = State(P.BodyLayerName, "Run");
+        Assert.AreEqual($"Walk:{C.VelocityParam}Less{C.RunStopSpeed}", Transitions(run));
+        Assert.Less(C.RunStopSpeed, C.RunStartSpeed, "no flicker between walking and running");
+        Assert.IsTrue(run.speedParameterActive);
+        Assert.AreEqual(C.VelocityParam, run.speedParameter, "the faster the wearer, the faster her legs");
+        Assert.AreEqual(1f / C.RunClipSpeed, run.speed, 1e-6f);
+        Assert.Greater(C.RunPull, 0f, "pulled toward her spot so she keeps up");
+        Assert.Greater(C.CatchUpDistance, 10f, "running never sets off the catch-up");
+        Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(Clip(run)).loopTime);
+    }
+
+    [Test]
+    public void Run_PlaysOnTheSpot()
+    {
+        var clip = Clip(State(P.BodyLayerName, "Run"));
+        var hips = AnimationUtility.GetCurveBindings(clip).First(b => b.propertyName == "m_LocalPosition.x" && b.type == typeof(Transform) && b.path.StartsWith(M.RobotPath + "/")).path;
+        Vector3 At(float t) => new Vector3(
+            AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(hips, typeof(Transform), "m_LocalPosition.x")).Evaluate(t),
+            AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(hips, typeof(Transform), "m_LocalPosition.y")).Evaluate(t),
+            AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve(hips, typeof(Transform), "m_LocalPosition.z")).Evaluate(t));
+        Assert.Less(Vector3.Distance(At(0f), At(clip.length)), 0.01f, "ends where it starts");
+        float spread = Enumerable.Range(0, 20).Max(i => Vector3.Distance(At(0f), At(clip.length * i / 20f)));
+        Assert.Less(spread, 0.3f, "no sliding forward over the loop");
     }
 
     [Test]
