@@ -294,9 +294,12 @@ sealed class Screen
             if (paused || Console.IsOutputRedirected) return;
             if (!cleared) { Console.Clear(); cleared = true; }
             Console.SetCursorPosition(0, 0);
+            // In columns (Japanese takes two), and no taller than the window: a wrapped or overlong screen scrolls
+            // on every redraw and the heading piles up.
             int width = Math.Max(20, Console.WindowWidth - 1);
-            foreach (var l in lines.Concat(new[] { "", "― 最近のできごと ―" }).Concat(messages))
-                Console.WriteLine(l.Length > width ? l[..width] : l.PadRight(width));
+            var status = lines.Concat(new[] { "", "― 最近のできごと ―" }).ToList();
+            foreach (var l in ConsoleText.Lines(status, messages, Console.WindowHeight))
+                Console.WriteLine(ConsoleText.Fit(l, width));
         }
     }
 }
