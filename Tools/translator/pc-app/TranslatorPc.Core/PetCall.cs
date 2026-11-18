@@ -35,6 +35,13 @@ public class PetCall
         return names.Select(Normalize).Where(n => n.Length > 0).Any(n => said.Any(s => s.Contains(n)));
     }
 
+    /// <summary>Heard with the settings: her names and sound-alikes, ignoring PetCallIgnore words (ちゃんと).</summary>
+    public static bool Heard(string text, string kana, Settings settings) =>
+        Heard(Without(text, settings.PetCallIgnore), Without(kana, settings.PetCallIgnore), settings.PetCallNames);
+
+    static string Without(string s, IEnumerable<string> words) =>
+        words.Select(Normalize).Where(w => w.Length > 0).Aggregate(Normalize(s), (acc, w) => acc.Replace(w, " "));
+
     public static string Normalize(string s)
     {
         var chars = s.Where(c => !char.IsWhiteSpace(c))
@@ -49,7 +56,7 @@ public class PetCall
     /// <param name="also">other recognizers' text for the same speech: her name counts there too</param>
     public string? Hear(string text, string kana, Settings settings, string also = "")
     {
-        bool name = Heard(text, kana, settings.PetCallNames) || (also.Length > 0 && Heard(also, "", settings.PetCallNames));
+        bool name = Heard(text, kana, settings) || (also.Length > 0 && Heard(also, "", settings));
         double now = clock();
         if (name) Call();
         lock (gate)

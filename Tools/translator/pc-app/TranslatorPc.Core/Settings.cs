@@ -24,10 +24,13 @@ public class Settings
     /// <summary>Saying one of these makes the pet turn and smile (PetCall): Homare (誉) and Natsuki. Also hotwords.</summary>
     public List<string> PetNames { get; set; } = new() { "ほまれ", "誉", "homare", "なつき", "natsuki" };
     /// <summary>
-    /// How the PC mishears her name, counted as her name too (not hotwords): the soft ほ of ほまれちゃん is lost or heard
-    /// as お/あ/う. Only with ちゃん, so 生まれ・まれに・丸い are not a call.
+    /// Also counted as her name (not hotwords). The PC mishears ほまれちゃん (the soft ほ is lost or heard as お/あ/う:
+    /// まれちゃん・まるちゃん・おばれちゃん…), but ちゃん itself comes through, and the wearer calls no one else ～ちゃん:
+    /// so ちゃん alone is a call. 生まれ・まれに・丸い are not.
     /// </summary>
-    public List<string> PetNameSoundAlikes { get; set; } = new() { "まれちゃん", "まるちゃん" };
+    public List<string> PetNameSoundAlikes { get; set; } = new() { "ちゃん" };
+    /// <summary>Words taken out before listening for her name: ちゃんと (properly) is not a call.</summary>
+    public List<string> PetCallIgnore { get; set; } = new() { "ちゃんと" };
     /// <summary>Her names and how they get misheard: what a call is listened for with.</summary>
     [JsonIgnore] public IEnumerable<string> PetCallNames => PetNames.Concat(PetNameSoundAlikes);
     /// <summary>Phrases for Sit / Wait / Come / Stand, said after her name (PetCommands; hiragana, Japanese only).</summary>
