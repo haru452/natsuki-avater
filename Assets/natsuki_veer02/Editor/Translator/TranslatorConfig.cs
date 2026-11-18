@@ -96,8 +96,8 @@ public static class TranslatorConfig
     /// <summary>InRange's own contact tag (TranslatorFarSense: VRChat contacts reach 3 m at most).</summary>
     public const string InRangeContactTag = "TranslatorPetRange";
     /// <summary>Told to wait, she nods first: her head dips this far (degrees) and comes back up over NodSeconds.</summary>
-    public const float NodDegrees = 20f;
-    public const float NodSeconds = 0.7f;
+    public const float NodDegrees = 25f;
+    public const float NodSeconds = 0.9f;
     /// <summary>Turn round (後ろ向いて): she faces away until told to face front again or she sets off (synced).</summary>
     public const string TurnParam = "TranslatorPetTurn";
     public const float TurnSeconds = 0.6f;

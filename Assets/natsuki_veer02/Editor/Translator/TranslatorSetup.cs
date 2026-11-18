@@ -60,7 +60,8 @@ public static class TranslatorSetup
 
     /// <summary>
     /// Puts one instance of the prefab directly under the avatar root and returns it.
-    /// An existing instance is returned as is. Throws, placing nothing, when synced parameters would exceed 256 bits.
+    /// An existing instance is reset to the prefab (stale scene overrides from older builds dropped) and refitted.
+    /// Throws, placing nothing, when synced parameters would exceed 256 bits.
     /// </summary>
     public static GameObject Place(GameObject avatarRoot, GameObject prefab, int katSyncCount = C.KatSyncCount)
     {
@@ -73,7 +74,13 @@ public static class TranslatorSetup
             .FirstOrDefault(g => PrefabUtility.GetCorrespondingObjectFromSource(g) == prefab);
         if (existing != null)
         {
+            // Overrides left by older builds (the subtitle once lifted 1.1 m in the scene) would stack on the new
+            // prefab's own layout: start again from the prefab.
+            PrefabUtility.RevertPrefabInstance(existing, InteractionMode.AutomatedAction);
+            existing.transform.localPosition = Vector3.zero;
+            existing.transform.localRotation = Quaternion.identity;
             TranslatorPetModel.FitTo(existing, descriptor);
+            if (avatarRoot.scene.IsValid()) EditorSceneManager.MarkSceneDirty(avatarRoot.scene);
             return existing;
         }
 

@@ -56,6 +56,21 @@ public class TranslatorSetupTests
     }
 
     [Test]
+    public void Place_Again_DropsStaleOverrides()
+    {
+        // An older build lifted the subtitle 1.1 m in the scene; once the prefab put it on her head, that leftover
+        // override lifted it 1.1 m above her head in VRChat.
+        var placed = TranslatorSetup.Place(avatar, prefab);
+        var text = placed.GetComponentsInChildren<Transform>(true).First(t => t.name == TranslatorConfig.TextName);
+        var source = PrefabUtility.GetCorrespondingObjectFromSource(text);
+        text.localPosition = source.localPosition + Vector3.up * 1.1f;
+        PrefabUtility.RecordPrefabInstancePropertyModifications(text);
+        TranslatorSetup.Place(avatar, prefab);
+        Assert.AreEqual(source.localPosition, text.localPosition);
+        Assert.AreEqual(Vector3.zero, placed.transform.localPosition);
+    }
+
+    [Test]
     public void Place_Twice_DoesNotDuplicate()
     {
         var first = TranslatorSetup.Place(avatar, prefab);

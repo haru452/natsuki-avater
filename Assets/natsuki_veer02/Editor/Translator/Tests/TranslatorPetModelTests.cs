@@ -634,6 +634,11 @@ public class TranslatorPetModelTests
             w.Evaluate(t))).eulerAngles.x;
         Assert.AreEqual(C.NodDegrees, Pitch(C.NodSeconds * 0.4f), 1f, "head down");
         Assert.AreEqual(0f, Mathf.DeltaAngle(0f, Pitch(C.NodSeconds)), 1f, "and up again");
+        // Called by name, her head looks at the wearer (an aim constraint over the animation): the nod rides on it too.
+        var offset = AnimationUtility.GetEditorCurve(Clip(nod), EditorCurveBinding.FloatCurve(head, typeof(VRCAimConstraint), "RotationOffset.x"));
+        Assert.AreEqual(C.NodDegrees, offset.Evaluate(C.NodSeconds * 0.4f), 0.5f, "head down while looking");
+        Assert.AreEqual(0f, offset.Evaluate(C.NodSeconds), 0.01f, "and back: the offset stays 0 afterwards");
+        Assert.GreaterOrEqual(C.NodDegrees, 25f, "big enough to see");
         Assert.AreEqual($"Free:{C.WaitParam}IfNot0 | TooFar:{C.InRangeParam}IfNot0", Transitions(State(layer, "Waiting")));
         var driver = State(layer, "TooFar").behaviours.OfType<VRCAvatarParameterDriver>().Single();
         Assert.IsTrue(driver.localOnly);

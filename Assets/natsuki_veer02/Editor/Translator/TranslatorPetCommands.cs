@@ -119,6 +119,10 @@ public static class TranslatorPetCommands
         string head = TranslatorPetModel.HeadPath(model);
         for (int i = 0; i < 4; i++)
             AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(head, typeof(Transform), "m_LocalRotation." + "xyzw"[i]), curves[i]);
+        // Called by name she is looking at the wearer: her head's aim constraint overrides the animation, so the nod
+        // goes on its offset too (pitch about the head's own side axis).
+        var pitch = new AnimationCurve(keys.Select(k => new Keyframe(k.Item1, k.Item2, 0f, 0f)).ToArray());
+        AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(head, typeof(VRCAimConstraint), "RotationOffset.x"), pitch);
         return clip;
     }
 
