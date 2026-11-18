@@ -1,14 +1,16 @@
 // Spoken commands after the pet's name (Japanese only, matched in hiragana, no Gemini): sit, wait, come, stand up,
-// turn round and face front.
+// turn round, face front and look at me (こっち向いて: she keeps looking until she sets off).
 namespace TranslatorPc.Core;
 
-public enum PetCommand { Sit, Wait, Come, Stand, TurnAround, FaceFront }
+public enum PetCommand { Sit, Wait, Come, Stand, TurnAround, FaceFront, LookAtMe }
 
 public static class PetCommands
 {
     public const string SitParam = Kat.Prefix + "TranslatorPetSit";
     public const string WaitParam = Kat.Prefix + "TranslatorPetWait";
     public const string TurnParam = Kat.Prefix + "TranslatorPetTurn";
+    /// <summary>On: she keeps looking at the wearer (the avatar clears it when she sets off).</summary>
+    public const string FaceParam = Kat.Prefix + "TranslatorPetFace";
 
     /// <summary>
     /// The phrases for each command, in hiragana (katakana and kanji are matched by their reading: 座って → すわって).
@@ -47,7 +49,12 @@ public static class PetCommands
         [nameof(PetCommand.FaceFront)] = new()
         {
             "まえむいて", "まえをむいて", "まえむいてて", "まえむいてね", "まえむいていいよ", "まえむけ", "まえみて", "まえをみて",
-            "こっちむいて", "こっちをむいて", "こっちみて", "こっちをみて", "ふりむいて", "もとにもどって", "もとどおり",
+            "もとにもどって", "もとどおり",
+        },
+        [nameof(PetCommand.LookAtMe)] = new()
+        {
+            "こっちむいて", "こっちをむいて", "こっちむいてて", "こっちむいてね", "こっちみて", "こっちをみて", "こっちみてて",
+            "ふりむいて", "わたしをみて", "わたしみて", "ぼくをみて", "おれをみて", "めをみて", "こっちみてよ",
         },
     };
 
@@ -77,9 +84,10 @@ public static class PetCommands
     {
         PetCommand.Sit => new[] { (SitParam, true) },
         PetCommand.Wait => new[] { (WaitParam, true) },
-        PetCommand.Come => new[] { (WaitParam, false), (SitParam, false), (TurnParam, false) },
-        PetCommand.TurnAround => new[] { (TurnParam, true) },
-        PetCommand.FaceFront => new[] { (TurnParam, false) },
+        PetCommand.Come => new[] { (WaitParam, false), (SitParam, false), (TurnParam, false), (FaceParam, false) },
+        PetCommand.TurnAround => new[] { (TurnParam, true), (FaceParam, false) },
+        PetCommand.FaceFront => new[] { (TurnParam, false), (FaceParam, false) },
+        PetCommand.LookAtMe => new[] { (TurnParam, false), (FaceParam, true) },
         _ => new[] { (SitParam, false) },
     };
 
@@ -90,6 +98,7 @@ public static class PetCommands
         PetCommand.Come => "来る（待つ・座る・後ろ向きをやめる）",
         PetCommand.TurnAround => "後ろを向く",
         PetCommand.FaceFront => "前を向く",
+        PetCommand.LookAtMe => "こっちを見続ける",
         _ => "立つ",
     };
 }

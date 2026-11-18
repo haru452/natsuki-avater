@@ -48,9 +48,15 @@ public class PetCommandsTests
     [Theory]
     [InlineData("前向いて", "まえむいて")]
     [InlineData("前を向いて", "まえをむいて")]
-    [InlineData("こっち向いて", "こっちむいて")]
-    [InlineData("振り向いて", "ふりむいて")]
     public void FaceFront(string text, string kana) => Assert.Equal(PetCommand.FaceFront, Find(text, kana));
+
+    // こっち向いて: she turns to the wearer and keeps looking, after the smile is over (until she sets off).
+    [Theory]
+    [InlineData("こっち向いて", "こっちむいて")]
+    [InlineData("こっちを見て", "こっちをみて")]
+    [InlineData("振り向いて", "ふりむいて")]
+    [InlineData("私を見て", "わたしをみて")]
+    public void LookAtMe(string text, string kana) => Assert.Equal(PetCommand.LookAtMe, Find(text, kana));
 
     [Theory]
     [InlineData("おはよう", "おはよう")]
@@ -71,10 +77,13 @@ public class PetCommandsTests
     {
         Assert.Equal(new[] { (PetCommands.SitParam, true) }, PetCommands.Parameters(PetCommand.Sit));
         Assert.Equal(new[] { (PetCommands.WaitParam, true) }, PetCommands.Parameters(PetCommand.Wait));
-        Assert.Equal(new[] { (PetCommands.WaitParam, false), (PetCommands.SitParam, false), (PetCommands.TurnParam, false) },
+        Assert.Equal(new[] { (PetCommands.WaitParam, false), (PetCommands.SitParam, false), (PetCommands.TurnParam, false),
+                (PetCommands.FaceParam, false) },
             PetCommands.Parameters(PetCommand.Come));
-        Assert.Equal(new[] { (PetCommands.TurnParam, true) }, PetCommands.Parameters(PetCommand.TurnAround));
-        Assert.Equal(new[] { (PetCommands.TurnParam, false) }, PetCommands.Parameters(PetCommand.FaceFront));
+        Assert.Equal(new[] { (PetCommands.TurnParam, true), (PetCommands.FaceParam, false) }, PetCommands.Parameters(PetCommand.TurnAround));
+        Assert.Equal(new[] { (PetCommands.TurnParam, false), (PetCommands.FaceParam, false) }, PetCommands.Parameters(PetCommand.FaceFront));
+        Assert.Equal(new[] { (PetCommands.TurnParam, false), (PetCommands.FaceParam, true) }, PetCommands.Parameters(PetCommand.LookAtMe));
+        Assert.Equal("/avatar/parameters/TranslatorPetFace", PetCommands.FaceParam);
         Assert.Equal("/avatar/parameters/TranslatorPetTurn", PetCommands.TurnParam);
         Assert.Equal(new[] { (PetCommands.SitParam, false) }, PetCommands.Parameters(PetCommand.Stand));
         Assert.Equal("/avatar/parameters/TranslatorPetSit", PetCommands.SitParam);
