@@ -20,31 +20,33 @@ public static class TranslatorPetCommands
     /// <summary>The facing constraint's turn on top of where it aims (Pet_Hop's VRCAimConstraint).</summary>
     public const string TurnProperty = "RotationOffset.y";
 
-    /// <summary>"In range": a receiver on the pet, WaitRange wide, for the wearer's sender (TranslatorPetWalker.AddClose).</summary>
-    public static void AddInRange(GameObject follow)
-    {
-        var r = follow.AddComponent<VRCContactReceiver>();
-        r.shapeType = ContactBase.ShapeType.Sphere;
-        r.radius = C.WaitRange;
-        r.collisionTags = new List<string> { C.WearerContactTag };
-        r.allowSelf = true;
-        r.allowOthers = false;
-        r.localOnly = false;
-        r.receiverType = ContactReceiver.ReceiverType.Constant;
-        r.parameter = C.InRangeParam;
-    }
+    /// <summary>
+    /// "In range": on while the wearer (wearer: the prefab root, which goes where the avatar goes) is within WaitRange
+    /// of her (TranslatorFarSense: a 20 m contact would work as 3 m in VRChat).
+    /// </summary>
+    public static void AddInRange(GameObject follow, Transform wearer) =>
+        TranslatorFarSense.Add(follow, wearer, C.WaitRange, C.InRangeContactTag, C.InRangeParam);
 
-    /// <summary>Free ⇄ Waiting on Wait; Waiting → TooFar when out of range, which clears Wait and Sit (the wearer's client).</summary>
-    public static void AddWaitLayer(AnimatorController controller, AnimatorStateMachine sm)
+    /// <summary>
+    /// Free → Nod (yes!) → Waiting on Wait, back to Free when it goes off; Waiting → TooFar when out of range, which
+    /// clears Wait and Sit (the wearer's client). model: the pet model, for her head's nod.
+    /// </summary>
+    public static void AddWaitLayer(AnimatorController controller, AnimatorStateMachine sm, GameObject model, string outputDir)
     {
         foreach (var p in new[] { C.SitParam, C.WaitParam, C.InRangeParam }) EnsureBool(controller, p);
         var free = sm.AddState("Free", new Vector3(300, 100));
+        var nod = sm.AddState("Nod", new Vector3(550, 150));
         var waiting = sm.AddState("Waiting", new Vector3(300, 200));
         var tooFar = sm.AddState("TooFar", new Vector3(300, 300));
-        foreach (var s in new[] { free, waiting, tooFar }) s.writeDefaultValues = false;
+        foreach (var s in new[] { free, nod, waiting, tooFar }) s.writeDefaultValues = false;
         sm.defaultState = free;
         TranslatorAnimationBuilder.AddDriver(tooFar, (C.WaitParam, 0f), (C.SitParam, 0f));
-        Go(free, waiting, AnimatorConditionMode.If, C.WaitParam);
+        nod.motion = TranslatorAnimationBuilder.SaveClip(NodClip(model), outputDir + "/Translator_PetNod.anim");
+        Go(free, nod, AnimatorConditionMode.If, C.WaitParam);
+        var nodded = nod.AddTransition(waiting);
+        nodded.hasExitTime = true;
+        nodded.exitTime = 1f;
+        nodded.duration = 0f;
         Go(waiting, free, AnimatorConditionMode.IfNot, C.WaitParam);
         Go(waiting, tooFar, AnimatorConditionMode.IfNot, C.InRangeParam);
         Go(tooFar, free, AnimatorConditionMode.IfNot, C.WaitParam);
@@ -95,6 +97,25 @@ public static class TranslatorPetCommands
             t.duration = C.LookTurnSeconds;
             t.AddCondition(AnimatorConditionMode.If, 0f, C.TurnParam);
         }
+    }
+
+    /// <summary>Her head dips NodDegrees from its rest pose and comes back up (over the Body layer's head).</summary>
+    static AnimationClip NodClip(GameObject model)
+    {
+        var rest = TranslatorPetModel.Head(model.transform).localRotation;
+        var keys = new[] { (0f, 0f), (C.NodSeconds * 0.4f, C.NodDegrees), (C.NodSeconds, 0f) };
+        var curves = new AnimationCurve[4];
+        for (int i = 0; i < 4; i++) curves[i] = new AnimationCurve();
+        foreach (var (t, deg) in keys)
+        {
+            var q = rest * Quaternion.Euler(deg, 0f, 0f);
+            for (int i = 0; i < 4; i++) curves[i].AddKey(new Keyframe(t, q[i], 0f, 0f));
+        }
+        var clip = new AnimationClip();
+        string head = TranslatorPetModel.HeadPath(model);
+        for (int i = 0; i < 4; i++)
+            AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve(head, typeof(Transform), "m_LocalRotation." + "xyzw"[i]), curves[i]);
+        return clip;
     }
 
     public static void EnsureBool(AnimatorController controller, string name)

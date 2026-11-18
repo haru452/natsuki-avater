@@ -77,14 +77,14 @@ public static class TranslatorPetModel
     }
 
     /// <summary>
-    /// Scales the placed pet so its eyes are at PetHeightRatio of the avatar's view height, and lifts the
-    /// text and hearts to stay just above the head.
+    /// Scales the placed pet so its eyes are at PetHeightRatio of the avatar's view height (a model with OwnSize keeps
+    /// its own), and lifts the text and hearts to stay just above the head.
     /// </summary>
     public static void FitTo(GameObject instance, VRCAvatarDescriptor avatar)
     {
         var robot = instance.transform.Find(C.PetRootName + "/" + M.RobotPath);
         if (!IsModel(robot) || avatar.ViewPosition.y <= 0f) return;
-        float s = C.PetHeightRatio * avatar.ViewPosition.y / EyeHeight(robot);
+        float s = C.Pet.OwnSize ? 1f : C.PetHeightRatio * avatar.ViewPosition.y / EyeHeight(robot);
         robot.localScale = Vector3.one * s;
         // (The text rides her head — a chat bubble — so it needs no lift.)
         Lift(instance.transform.Find(C.PetRootName + "/" + C.PetFollowName + "/" + C.HeartsName), s, 0f);

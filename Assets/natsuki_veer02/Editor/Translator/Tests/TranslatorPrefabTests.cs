@@ -134,15 +134,11 @@ public class TranslatorPrefabTests
     [Test]
     public void Prefab_ContactNoticesWhenThePetIsLeftBehind()
     {
-        var r = Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target").GetComponent<VRCContactReceiver>();
-        Assert.AreEqual(ContactReceiver.ReceiverType.Constant, r.receiverType);
-        Assert.AreEqual(C.NearParam, r.parameter);
-        Assert.AreEqual(C.CatchUpDistance, r.radius);
-        Assert.GreaterOrEqual(r.radius, 8f, "only snaps over once well behind (it used to at 4 m)");
-        CollectionAssert.AreEqual(new[] { C.PetContactTag }, r.collisionTags);
-        Assert.IsTrue(r.allowSelf);
-        Assert.IsFalse(r.allowOthers, "other players cannot trigger it");
-        Assert.IsFalse(r.localOnly, "every client moves its own copy of the pet");
+        // From her waiting spot to her, measured within VRChat's 3 m contact limit (a 12 m contact works as 3 m).
+        var spot = Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target");
+        Assert.AreEqual(C.CatchUpDistance, TranslatorFarSenseTests.Reach(spot, C.NearParam, out var far), 0.01f);
+        Assert.AreEqual(Find("Pet_Root/Pet_Follow"), far);
+        Assert.GreaterOrEqual(C.CatchUpDistance, 8f, "only snaps over once well behind (it used to at 4 m)");
 
         var s = Find("Pet_Root/Pet_Follow").GetComponent<VRCContactSender>();
         CollectionAssert.AreEqual(new[] { C.PetContactTag }, s.collisionTags);

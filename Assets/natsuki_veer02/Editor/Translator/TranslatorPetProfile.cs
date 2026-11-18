@@ -18,6 +18,10 @@ public sealed class TranslatorPetProfile
     public (string mesh, string shape)[] ShutUnderSmile;
     /// <summary>A mesh hidden while the eyes are shut (eye highlights), or null.</summary>
     public string Highlight;
+    /// <summary>
+    /// Keep the model's own size (it is already small) instead of sizing her to PetHeightRatio of the wearer.
+    /// </summary>
+    public bool OwnSize;
 
     const string Mryotaisu = "Assets/Mryotaisu/";
 
@@ -55,6 +59,7 @@ public sealed class TranslatorPetProfile
         Blink = new[] { ("Face", "Fcl_EYE_Close") },
         ShutUnderSmile = new (string, string)[0],
         Highlight = null,
+        OwnSize = true, // Homare is small as she is
     };
 
     /// <summary>riko2 (VRoid; the first model tried for Homare), with the pet's own motions (TranslatorPetMotions): no Asset Store motion needed.</summary>

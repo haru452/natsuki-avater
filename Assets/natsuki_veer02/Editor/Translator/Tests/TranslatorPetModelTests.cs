@@ -208,7 +208,8 @@ public class TranslatorPetModelTests
             var placed = TranslatorSetup.Place(avatar, prefab);
             var robot = placed.transform.Find(RobotPath);
             float petEye = P.EyeHeight(robot) * robot.localScale.y;
-            Assert.AreEqual(0.6f * 1.4f, petEye, 0.01f);
+            if (C.Pet.OwnSize) Assert.AreEqual(Vector3.one, robot.localScale, "her own size, not the wearer's");
+            else Assert.AreEqual(0.6f * 1.4f, petEye, 0.01f);
 
             // The bubble rides her head, so it resizes with her and stays above the name tag.
             var head = P.Head(robot);
@@ -308,6 +309,17 @@ public class TranslatorPetModelTests
         var robotScale = Find(RobotPath).lossyScale.x;
         Assert.AreEqual(C.NameTagWidth, size.x / robotScale, 0.01f);
         Assert.AreEqual(C.NameTagWidth * 256f / 768f, size.y / robotScale, 0.01f, "the picture's shape");
+    }
+
+    [Test]
+    public void Bubble_Sits8cmAboveTheNameTag()
+    {
+        Assert.IsTrue(C.ShowNameTag, "Homare has her name tag (the wearer's photo of her)");
+        var head = Head;
+        var tag = head.Find(C.NameTagName);
+        float tagTop = tag.position.y + tag.lossyScale.y / 2f;
+        float s = Find(RobotPath).lossyScale.x;
+        Assert.AreEqual(0.08f * s, BubbleBottom(head.Find(C.TextName)) - tagTop, 0.005f, "the wearer asked for about 8 cm");
     }
 
     /// <summary>What the bubble must clear: the name tag's centre, or without it a point 0.2 m (at her scale) above the head bone.</summary>
@@ -597,14 +609,27 @@ public class TranslatorPetModelTests
     [Test]
     public void Wait_SheStaysPut_UntilCalledBackOr20mAway()
     {
-        var inRange = Find("Pet_Root/Pet_Follow").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.InRangeParam);
-        Assert.AreEqual(20f, inRange.radius);
-        CollectionAssert.AreEqual(new[] { C.WearerContactTag }, inRange.collisionTags);
-        Assert.IsFalse(inRange.allowOthers);
+        // 20 m from her to the wearer (the prefab root), measured within VRChat's 3 m contact limit.
+        Assert.AreEqual(20f, TranslatorFarSenseTests.Reach(Find("Pet_Root/Pet_Follow"), C.InRangeParam, out var far), 0.01f);
+        Assert.AreEqual(prefab.transform, far);
 
         var layer = TranslatorPetCommands.WaitLayerName;
         Assert.AreEqual("Free", Layer(layer).defaultState.name);
-        Assert.AreEqual($"Waiting:{C.WaitParam}If0", Transitions(State(layer, "Free")));
+        // She nods (yes!), then waits.
+        Assert.AreEqual($"Nod:{C.WaitParam}If0", Transitions(State(layer, "Free")));
+        var nod = State(layer, "Nod");
+        var toWaiting = nod.transitions.Single();
+        Assert.AreEqual(("Waiting", true, 1f), (toWaiting.destinationState.name, toWaiting.hasExitTime, toWaiting.exitTime));
+        var head = TranslatorPetModel.HeadPath(model);
+        var w = AnimationUtility.GetEditorCurve(Clip(nod), EditorCurveBinding.FloatCurve(head, typeof(Transform), "m_LocalRotation.w"));
+        var x = AnimationUtility.GetEditorCurve(Clip(nod), EditorCurveBinding.FloatCurve(head, typeof(Transform), "m_LocalRotation.x"));
+        var rest = TranslatorPetModel.Head(model.transform).localRotation;
+        float Pitch(float t) => (Quaternion.Inverse(rest) * new Quaternion(x.Evaluate(t),
+            AnimationUtility.GetEditorCurve(Clip(nod), EditorCurveBinding.FloatCurve(head, typeof(Transform), "m_LocalRotation.y")).Evaluate(t),
+            AnimationUtility.GetEditorCurve(Clip(nod), EditorCurveBinding.FloatCurve(head, typeof(Transform), "m_LocalRotation.z")).Evaluate(t),
+            w.Evaluate(t))).eulerAngles.x;
+        Assert.AreEqual(C.NodDegrees, Pitch(C.NodSeconds * 0.4f), 1f, "head down");
+        Assert.AreEqual(0f, Mathf.DeltaAngle(0f, Pitch(C.NodSeconds)), 1f, "and up again");
         Assert.AreEqual($"Free:{C.WaitParam}IfNot0 | TooFar:{C.InRangeParam}IfNot0", Transitions(State(layer, "Waiting")));
         var driver = State(layer, "TooFar").behaviours.OfType<VRCAvatarParameterDriver>().Single();
         Assert.IsTrue(driver.localOnly);

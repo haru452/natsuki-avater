@@ -90,6 +90,11 @@ public static class TranslatorConfig
     /// <summary>On while the wearer is within WaitRange of her (a contact); leaving it ends the waiting and she respawns.</summary>
     public const string InRangeParam = "TranslatorPetInRange";
     public const float WaitRange = 20f;
+    /// <summary>InRange's own contact tag (TranslatorFarSense: VRChat contacts reach 3 m at most).</summary>
+    public const string InRangeContactTag = "TranslatorPetRange";
+    /// <summary>Told to wait, she nods first: her head dips this far (degrees) and comes back up over NodSeconds.</summary>
+    public const float NodDegrees = 20f;
+    public const float NodSeconds = 0.7f;
     /// <summary>Turn round (後ろ向いて): she faces away until told to face front again or she sets off (synced).</summary>
     public const string TurnParam = "TranslatorPetTurn";
     public const float TurnSeconds = 0.6f;
@@ -122,12 +127,15 @@ public static class TranslatorConfig
     /// <summary>Above the head bone, clearing the hair and halo (metres before the pet's scale).</summary>
     public const float NameTagLift = 0.35f;
     /// <summary>
-    /// The name tag is off for now: the wearer is taking a photo of Homare for it (put it in NameTagIconSource, run
-    /// Tools/translator/nametag.py, then set this true and Build Prefab). Off, the bubble sits lower, where the tag was.
+    /// Homare's name tag, with the wearer's in-world photo of her (NameTagIconSource; Tools/translator/nametag.py).
+    /// Off, the bubble sits lower, where the tag would be.
     /// </summary>
-    public const bool ShowNameTag = false;
-    /// <summary>The chat bubble's bottom, this far above the name tag's centre (metres before the pet's scale).</summary>
-    public const float ChatBubbleLift = 0.10f;
+    public const bool ShowNameTag = true;
+    /// <summary>
+    /// The chat bubble's bottom, this far above the name tag's centre (metres before the pet's scale): the wearer asked
+    /// for about 8 cm above the tag, so half the tag's height (the picture is 768 x 256) plus 0.08.
+    /// </summary>
+    public const float ChatBubbleLift = NameTagWidth * 256f / 768f / 2f + 0.08f;
     public const float BlinkSeconds = 4f;
     public static readonly (string mesh, string shape)[] PetBlinkShapes = Pet.Blink;
     /// <summary>The model's eyes sit at this fraction of the avatar's eye height (about 0.6 of its height).</summary>
@@ -151,6 +159,8 @@ public static class TranslatorConfig
     public const float CatchUpDistance = 12f;
     public const string NearParam = "TranslatorPetNear";
     public const string PetContactTag = "TranslatorPetHome";
+    /// <summary>The catch-up's own contact tag (TranslatorFarSense: VRChat contacts reach 3 m at most).</summary>
+    public const string CatchUpContactTag = "TranslatorPetFar";
     public const float PetSenderRadius = 0.05f;
 
     // Where the pet waits turns with the wearer only while walking, so turning on the spot leaves it be.
