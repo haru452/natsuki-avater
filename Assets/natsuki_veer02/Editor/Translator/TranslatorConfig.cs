@@ -42,8 +42,8 @@ public static class TranslatorConfig
 
     // A humanoid model as the pet instead of the robot. Asset Store models cannot be redistributed, so the
     // BOOTH build sets PetModelPath to "" (or leaves the model out) and gets the robot.
-    /// <summary>Which model: TranslatorPetProfile.Muryotaisu (Natsuki) or TranslatorPetProfile.Riko2 (Homare, VRoid).</summary>
-    public static readonly TranslatorPetProfile Pet = TranslatorPetProfile.Riko2;
+    /// <summary>Which model: TranslatorPetProfile.Muryotaisu (Natsuki), .Homare (VRoid) or .Riko2.</summary>
+    public static readonly TranslatorPetProfile Pet = TranslatorPetProfile.Homare;
     public static readonly string PetModelPath = Pet.ModelPath;  // "" for the robot (BOOTH)
     /// <summary>The model's own prefab: its renderers carry the textured materials (the FBX's embedded ones are blank).</summary>
     public static readonly string PetMaterialSource = Pet.MaterialSource;

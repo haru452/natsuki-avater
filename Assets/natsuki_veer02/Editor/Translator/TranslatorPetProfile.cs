@@ -39,7 +39,25 @@ public sealed class TranslatorPetProfile
         Highlight = "EyeLight",
     };
 
-    /// <summary>Homare: riko2 (VRoid), with the pet's own motions (TranslatorPetMotions): no Asset Store motion needed.</summary>
+    /// <summary>Homare (VRoid, imported with XAvatar), with the pet's own motions (TranslatorPetMotions): no Asset Store motion needed.</summary>
+    public static readonly TranslatorPetProfile Homare = new TranslatorPetProfile
+    {
+        ModelPath = "Assets/homare/Prefab/homare.prefab",
+        MaterialSource = "Assets/homare/Prefab/homare.prefab",
+        IdleClip = "Assets/natsuki_veer02/PetMotions/Pet_Idle.anim",
+        WalkClip = "Assets/natsuki_veer02/PetMotions/Pet_Walk.anim",
+        BoredClip = "Assets/natsuki_veer02/PetMotions/Pet_Bored.anim",
+        WakeClip = "Assets/natsuki_veer02/PetMotions/Pet_Jump.anim",
+        HeadBone = "J_Bip_C_Head",
+        LeftEyeBone = "J_Adj_L_FaceEye",
+        // VRoid's joy face already closes the eyes into smiling arcs, so the blink opens under it.
+        Smile = new[] { ("Face", "Fcl_ALL_Joy") },
+        Blink = new[] { ("Face", "Fcl_EYE_Close") },
+        ShutUnderSmile = new (string, string)[0],
+        Highlight = null,
+    };
+
+    /// <summary>riko2 (VRoid; the first model tried for Homare), with the pet's own motions (TranslatorPetMotions): no Asset Store motion needed.</summary>
     public static readonly TranslatorPetProfile Riko2 = new TranslatorPetProfile
     {
         ModelPath = "Assets/riko2/Prefab/riko2.prefab",
