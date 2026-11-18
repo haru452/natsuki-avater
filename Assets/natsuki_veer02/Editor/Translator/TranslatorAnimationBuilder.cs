@@ -132,7 +132,7 @@ public static class TranslatorAnimationBuilder
         return clip;
     }
 
-    static void AddDriver(AnimatorState state, params (string name, float value)[] sets)
+    internal static void AddDriver(AnimatorState state, params (string name, float value)[] sets)
     {
         var driver = state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
         driver.localOnly = true;

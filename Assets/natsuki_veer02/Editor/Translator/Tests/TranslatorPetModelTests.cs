@@ -84,7 +84,8 @@ public class TranslatorPetModelTests
     [Test]
     public void Motion_BodyLookPatBlink_NoHopNoSleep()
     {
-        CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName, P.SideLayerName },
+        CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName, P.SideLayerName,
+                TranslatorPetCommands.WaitLayerName },
             c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         Assert.AreEqual(AnimatorControllerParameterType.Float, c.parameters.Single(p => p.name == C.VoiceParam).type);
@@ -97,8 +98,9 @@ public class TranslatorPetModelTests
         string back = $"{C.VelocityParam}Greater{C.SleepStillSpeed} | {{0}}:{C.VoiceParam}Greater{C.SleepVoiceLevel}";
         Assert.AreEqual("Idle", Layer(P.BodyLayerName).defaultState.name);
         // Only once the wearer is no longer close does it set off (walking up to it never pushes it away).
-        Assert.AreEqual($"Walk:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed} | Approach:{C.CloseParam}IfNot0 | "
-                        + $"Approach:{C.ArrivedParam}IfNot0 | Drowsy:{still}",
+        string stay = $"&{C.WaitParam}IfNot0";
+        Assert.AreEqual($"Sit:{C.SitParam}If0 | Walk:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}{stay} | Approach:{C.CloseParam}IfNot0{stay} | "
+                        + $"Approach:{C.ArrivedParam}IfNot0{stay} | Drowsy:{still}",
             Transitions(State(P.BodyLayerName, "Idle")));
         Assert.AreEqual($"Approach:{C.VelocityParam}Less{C.HopStopSpeed}", Transitions(State(P.BodyLayerName, "Walk")));
         // Near the spot it jumps the last bit instead of sliding in.
@@ -113,7 +115,7 @@ public class TranslatorPetModelTests
         var drowsy = State(P.BodyLayerName, "Drowsy");
         var toBored = drowsy.transitions.Single(t => t.destinationState.name == "Bored");
         Assert.AreEqual(C.SleepAfterSeconds, toBored.exitTime * Clip(drowsy).length, 0.01f, "one minute");
-        Assert.AreEqual("Idle:" + string.Format(back, "Idle"),
+        Assert.AreEqual($"Sit:{C.SitParam}If0 | Idle:" + string.Format(back, "Idle"),
             string.Join(" | ", drowsy.transitions.Where(t => t != toBored).Select(t =>
                 t.destinationState.name + ":" + string.Join("&", t.conditions.Select(k => k.parameter + k.mode + k.threshold)))));
         Assert.AreEqual("Wake:" + string.Format(back, "Wake"), Transitions(State(P.BodyLayerName, "Bored")));
@@ -367,10 +369,10 @@ public class TranslatorPetModelTests
         Assert.AreEqual(1f, Scale("RightMirror"));
         Assert.AreEqual(-1f, Scale("LeftMirror"));
         Assert.AreEqual("Right", Layer(P.SideLayerName).defaultState.name);
-        Assert.AreEqual($"Left:{C.PetLeftParam}If0&{C.CloseParam}IfNot0 | RightMirror:{C.MirrorParam}If0", Transitions(State(P.SideLayerName, "Right")));
-        Assert.AreEqual($"Right:{C.PetRightParam}If0&{C.CloseParam}IfNot0 | LeftMirror:{C.MirrorParam}If0", Transitions(State(P.SideLayerName, "Left")));
-        Assert.AreEqual($"LeftMirror:{C.PetLeftParam}If0&{C.CloseParam}IfNot0 | Right:{C.MirrorParam}IfNot0", Transitions(State(P.SideLayerName, "RightMirror")));
-        Assert.AreEqual($"RightMirror:{C.PetRightParam}If0&{C.CloseParam}IfNot0 | Left:{C.MirrorParam}IfNot0", Transitions(State(P.SideLayerName, "LeftMirror")));
+        Assert.AreEqual($"Left:{C.PetLeftParam}If0&{C.CloseParam}IfNot0&{C.WaitParam}IfNot0 | RightMirror:{C.MirrorParam}If0", Transitions(State(P.SideLayerName, "Right")));
+        Assert.AreEqual($"Right:{C.PetRightParam}If0&{C.CloseParam}IfNot0&{C.WaitParam}IfNot0 | LeftMirror:{C.MirrorParam}If0", Transitions(State(P.SideLayerName, "Left")));
+        Assert.AreEqual($"LeftMirror:{C.PetLeftParam}If0&{C.CloseParam}IfNot0&{C.WaitParam}IfNot0 | Right:{C.MirrorParam}IfNot0", Transitions(State(P.SideLayerName, "RightMirror")));
+        Assert.AreEqual($"RightMirror:{C.PetRightParam}If0&{C.CloseParam}IfNot0&{C.WaitParam}IfNot0 | Left:{C.MirrorParam}IfNot0", Transitions(State(P.SideLayerName, "LeftMirror")));
         float Get(string state, string prop) => AnimationUtility.GetEditorCurve(Clip(State(P.SideLayerName, state)),
             EditorCurveBinding.FloatCurve(C.PetHeadingName + "/" + C.PetSideName, typeof(Transform), prop)).Evaluate(0f);
         foreach (var state in new[] { "Right", "Left", "RightMirror", "LeftMirror" })
@@ -394,7 +396,7 @@ public class TranslatorPetModelTests
         var toggle = menu.controls.Single(c => c.name == C.MirrorLabel);
         Assert.AreEqual(C.MirrorParam, toggle.parameter.name);
         Assert.IsTrue(c.parameters.Any(x => x.name == C.MirrorParam));
-        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 2, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call)");
+        Assert.AreEqual(TranslatorBudget.SyncedBits(8) + 4, TranslatorBudget.AddedBits(null, 8, mirror: true), "the budget check counts it (and the call, sit and wait)");
     }
 
     // ---- Called by name (the PC app hears it and sets CalledParam for a moment) ----
@@ -424,6 +426,97 @@ public class TranslatorPetModelTests
                 AnimationUtility.GetEditorCurve(Clip(called), b).Evaluate(C.CalledSeconds * 0.9f), b.path + " " + b.propertyName + ": faces her like a look");
 
         StringAssert.Contains($"Glance:{C.CalledParam}If0", Transitions(State(TranslatorPetWalker.BlinkLayerName, "Blink")), "smiles");
+    }
+
+    // ---- Spoken commands after her name: sit (座って) and wait (待ってて) ----
+
+    [Test]
+    public void Commands_AreSyncedFlags_NotInTheMenu()
+    {
+        var ps = prefab.GetComponent<ModularAvatarParameters>().parameters;
+        foreach (var name in new[] { C.SitParam, C.WaitParam })
+        {
+            var p = ps.Single(x => x.nameOrPrefix == name);
+            Assert.AreEqual(ParameterSyncType.Bool, p.syncType, name + ": everyone sees her sit or wait");
+            Assert.IsFalse(p.saved, name);
+            Assert.IsTrue(c.parameters.Any(x => x.name == name), name);
+        }
+        var menu = prefab.GetComponent<ModularAvatarMenuInstaller>().menuToAppend.controls.Single().subMenu;
+        Assert.IsFalse(menu.controls.Any(x => x.parameter != null && (x.parameter.name == C.SitParam || x.parameter.name == C.WaitParam)));
+    }
+
+    [Test]
+    public void Sit_OnTheFloor_UntilToldOrTheWearerWalksOff()
+    {
+        var sit = State(P.BodyLayerName, "Sit");
+        Assert.IsTrue(AnimationUtility.GetAnimationClipSettings(Clip(sit)).loopTime);
+        Assert.AreEqual(0f, Weight(Clip(sit), C.PetHeadingName, typeof(VRCPositionConstraint), 0), "stays where she is");
+        Assert.AreEqual($"Idle:{C.SitParam}IfNot0 | Rise:{C.CloseParam}IfNot0&{C.VelocityParam}Greater{C.HopStartSpeed}&{C.WaitParam}IfNot0",
+            Transitions(sit));
+        var rise = State(P.BodyLayerName, "Rise");
+        var driver = rise.behaviours.OfType<VRCAvatarParameterDriver>().Single();
+        Assert.IsTrue(driver.localOnly, "the wearer's client clears it; the synced flag tells everyone");
+        Assert.AreEqual((C.SitParam, 0f), (driver.parameters.Single().name, driver.parameters.Single().value));
+        Assert.AreEqual($"Idle:{C.SitParam}IfNot0", Transitions(rise));
+    }
+
+    [Test]
+    public void Sit_TheBakedPoseRestsOnTheFloor()
+    {
+        var robot = (GameObject)Object.Instantiate(Find(RobotPath).gameObject);
+        try
+        {
+            Clip(State(P.BodyLayerName, "Sit")).SampleAnimation(Wrap(robot), 0f);
+            float min = float.MaxValue;
+            var mesh = new Mesh();
+            foreach (var r in robot.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                r.BakeMesh(mesh, true);
+                foreach (var v in mesh.vertices) min = Mathf.Min(min, robot.transform.InverseTransformPoint(r.transform.TransformPoint(v)).y);
+            }
+            Object.DestroyImmediate(mesh);
+            Assert.AreEqual(0f, min, 0.02f, "neither floating nor sunk");
+            float head = robot.transform.InverseTransformPoint(P.FindDeep(robot.transform, "Head").position).y;
+            Assert.Less(head, P.EyeHeight(Find(RobotPath)) * 0.8f, "her head is lower than standing: she sits");
+        }
+        finally
+        {
+            Object.DestroyImmediate(robot.transform.root.gameObject);
+        }
+    }
+
+    /// <summary>The clip's paths start at Pet_Robot's parent chain (Pet_Follow/Pet_Hop/Pet_Robot): rebuild it around a copy.</summary>
+    static GameObject Wrap(GameObject robot)
+    {
+        var root = new GameObject("Pet_Root_Copy");
+        var follow = new GameObject(C.PetFollowName).transform;
+        follow.SetParent(root.transform, false);
+        var hop = new GameObject("Pet_Hop").transform;
+        hop.SetParent(follow, false);
+        robot.name = C.RobotName;
+        robot.transform.SetParent(hop, false);
+        robot.transform.localPosition = Vector3.zero;
+        robot.transform.localRotation = Quaternion.identity;
+        robot.transform.localScale = Vector3.one;
+        return root;
+    }
+
+    [Test]
+    public void Wait_SheStaysPut_UntilCalledBackOr20mAway()
+    {
+        var inRange = Find("Pet_Root/Pet_Follow").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.InRangeParam);
+        Assert.AreEqual(20f, inRange.radius);
+        CollectionAssert.AreEqual(new[] { C.WearerContactTag }, inRange.collisionTags);
+        Assert.IsFalse(inRange.allowOthers);
+
+        var layer = TranslatorPetCommands.WaitLayerName;
+        Assert.AreEqual("Free", Layer(layer).defaultState.name);
+        Assert.AreEqual($"Waiting:{C.WaitParam}If0", Transitions(State(layer, "Free")));
+        Assert.AreEqual($"Free:{C.WaitParam}IfNot0 | TooFar:{C.InRangeParam}IfNot0", Transitions(State(layer, "Waiting")));
+        var driver = State(layer, "TooFar").behaviours.OfType<VRCAvatarParameterDriver>().Single();
+        Assert.IsTrue(driver.localOnly);
+        CollectionAssert.AreEquivalent(new[] { (C.WaitParam, 0f), (C.SitParam, 0f) }, driver.parameters.Select(x => (x.name, x.value)));
+        Assert.AreEqual($"Free:{C.WaitParam}IfNot0", Transitions(State(layer, "TooFar")));
     }
 
     [Test]

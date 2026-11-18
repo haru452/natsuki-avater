@@ -55,6 +55,7 @@ public static class TranslatorPrefabBuilder
                 TranslatorPetWalker.AddLandingPull(follow, target.transform);
                 TranslatorPetWalker.AddFacing(hop, target.transform, TranslatorPetWalker.AddAhead(heading.transform));
                 TranslatorPetWalker.AddClose(follow, root);
+                TranslatorPetCommands.AddInRange(follow);
                 TranslatorPetWalker.AddSideSense(root);
                 TranslatorPetWalker.AddArrive(target);
                 var look = robot.transform.Find(TranslatorReactionsBuilder.LookZoneName);
@@ -142,7 +143,7 @@ public static class TranslatorPrefabBuilder
     }
 
     /// <summary>The parameters the prefab declares, in the order they appear in MA Parameters.</summary>
-    /// <summary>mirror: the humanoid's extras, the mirror-mode toggle and the called-by-name flag (two more synced bits).</summary>
+    /// <summary>mirror: the humanoid's extras, the mirror-mode toggle, the called-by-name flag and the sit and wait commands (four more synced bits).</summary>
     public static List<ParameterConfig> ParameterList(int katSyncCount, bool mirror = false)
     {
         var list = new List<ParameterConfig>
@@ -157,6 +158,8 @@ public static class TranslatorPrefabBuilder
             list.Add(Param(C.KatCharSyncPrefix + i, ParameterSyncType.Float, saved: false));
         if (mirror) list.Add(Param(C.MirrorParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.CalledParam, ParameterSyncType.Bool, saved: false));
+        if (mirror) list.Add(Param(C.SitParam, ParameterSyncType.Bool, saved: false));
+        if (mirror) list.Add(Param(C.WaitParam, ParameterSyncType.Bool, saved: false));
         return list;
     }
 

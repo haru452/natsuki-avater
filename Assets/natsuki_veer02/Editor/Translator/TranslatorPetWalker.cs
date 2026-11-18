@@ -97,6 +97,7 @@ public static class TranslatorPetWalker
         controller.AddParameter(C.PetLeftParam, AnimatorControllerParameterType.Bool);
         controller.AddParameter(C.PetRightParam, AnimatorControllerParameterType.Bool);
         controller.AddParameter(C.MirrorParam, AnimatorControllerParameterType.Bool);
+        TranslatorPetCommands.EnsureBool(controller, C.WaitParam);
         string path = C.PetHeadingName + "/" + C.PetSideName;
         AnimatorState Side(string name, float x, float y)
         {
@@ -129,6 +130,7 @@ public static class TranslatorPetWalker
             var t = Go(from, to);
             t.AddCondition(AnimatorConditionMode.If, 0f, param);
             t.AddCondition(AnimatorConditionMode.IfNot, 0f, C.CloseParam);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0f, C.WaitParam); // waiting, her spot stays put
             Go(from, mirror).AddCondition(from.name.EndsWith("Mirror") ? AnimatorConditionMode.IfNot : AnimatorConditionMode.If, 0f, C.MirrorParam);
         }
     }
