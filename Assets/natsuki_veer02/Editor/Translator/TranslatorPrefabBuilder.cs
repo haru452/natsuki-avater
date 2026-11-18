@@ -55,7 +55,7 @@ public static class TranslatorPrefabBuilder
                 TranslatorPetWalker.AddLandingPull(follow, target.transform);
                 TranslatorPetWalker.AddFacing(hop, target.transform, TranslatorPetWalker.AddAhead(heading.transform));
                 TranslatorPetWalker.AddClose(follow, root);
-                TranslatorPetCommands.AddInRange(follow);
+                TranslatorPetCommands.AddInRange(follow, root.transform);
                 TranslatorPetWalker.AddSideSense(root);
                 TranslatorPetWalker.AddArrive(target);
                 var look = robot.transform.Find(TranslatorReactionsBuilder.LookZoneName);
@@ -121,20 +121,13 @@ public static class TranslatorPrefabBuilder
     }
 
     /// <summary>
-    /// Teleport detection: a Constant receiver on Pet_Target is on while the pet's sender is within
-    /// CatchUpDistance. When it goes off, the toggle layer snaps the pet over. Only this avatar's own sender counts.
+    /// Teleport detection: NearParam is on while the pet is within CatchUpDistance of her spot (Pet_Target); when it
+    /// goes off, the toggle layer snaps the pet over. TranslatorFarSense, as VRChat contacts reach 3 m at most.
+    /// The pet's own sender (PetContactTag) is for the side and arrival senses.
     /// </summary>
     static void AddCatchUpContact(GameObject target, GameObject follow)
     {
-        var r = target.AddComponent<VRCContactReceiver>();
-        r.shapeType = ContactBase.ShapeType.Sphere;
-        r.radius = C.CatchUpDistance;
-        r.collisionTags = new List<string> { C.PetContactTag };
-        r.allowSelf = true;
-        r.allowOthers = false;
-        r.localOnly = false;
-        r.receiverType = ContactReceiver.ReceiverType.Constant;
-        r.parameter = C.NearParam;
+        TranslatorFarSense.Add(target, follow.transform, C.CatchUpDistance, C.CatchUpContactTag, C.NearParam);
 
         var s = follow.AddComponent<VRCContactSender>();
         s.shapeType = ContactBase.ShapeType.Sphere;

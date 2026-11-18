@@ -20,19 +20,12 @@ public static class TranslatorPetCommands
     /// <summary>The facing constraint's turn on top of where it aims (Pet_Hop's VRCAimConstraint).</summary>
     public const string TurnProperty = "RotationOffset.y";
 
-    /// <summary>"In range": a receiver on the pet, WaitRange wide, for the wearer's sender (TranslatorPetWalker.AddClose).</summary>
-    public static void AddInRange(GameObject follow)
-    {
-        var r = follow.AddComponent<VRCContactReceiver>();
-        r.shapeType = ContactBase.ShapeType.Sphere;
-        r.radius = C.WaitRange;
-        r.collisionTags = new List<string> { C.WearerContactTag };
-        r.allowSelf = true;
-        r.allowOthers = false;
-        r.localOnly = false;
-        r.receiverType = ContactReceiver.ReceiverType.Constant;
-        r.parameter = C.InRangeParam;
-    }
+    /// <summary>
+    /// "In range": on while the wearer (wearer: the prefab root, which goes where the avatar goes) is within WaitRange
+    /// of her (TranslatorFarSense: a 20 m contact would work as 3 m in VRChat).
+    /// </summary>
+    public static void AddInRange(GameObject follow, Transform wearer) =>
+        TranslatorFarSense.Add(follow, wearer, C.WaitRange, C.InRangeContactTag, C.InRangeParam);
 
     /// <summary>Free ⇄ Waiting on Wait; Waiting → TooFar when out of range, which clears Wait and Sit (the wearer's client).</summary>
     public static void AddWaitLayer(AnimatorController controller, AnimatorStateMachine sm)

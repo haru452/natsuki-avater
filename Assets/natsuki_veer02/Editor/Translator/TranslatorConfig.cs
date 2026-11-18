@@ -90,6 +90,8 @@ public static class TranslatorConfig
     /// <summary>On while the wearer is within WaitRange of her (a contact); leaving it ends the waiting and she respawns.</summary>
     public const string InRangeParam = "TranslatorPetInRange";
     public const float WaitRange = 20f;
+    /// <summary>InRange's own contact tag (TranslatorFarSense: VRChat contacts reach 3 m at most).</summary>
+    public const string InRangeContactTag = "TranslatorPetRange";
     /// <summary>Turn round (後ろ向いて): she faces away until told to face front again or she sets off (synced).</summary>
     public const string TurnParam = "TranslatorPetTurn";
     public const float TurnSeconds = 0.6f;
@@ -146,6 +148,8 @@ public static class TranslatorConfig
     public const float CatchUpDistance = 12f;
     public const string NearParam = "TranslatorPetNear";
     public const string PetContactTag = "TranslatorPetHome";
+    /// <summary>The catch-up's own contact tag (TranslatorFarSense: VRChat contacts reach 3 m at most).</summary>
+    public const string CatchUpContactTag = "TranslatorPetFar";
     public const float PetSenderRadius = 0.05f;
 
     // Where the pet waits turns with the wearer only while walking, so turning on the spot leaves it be.

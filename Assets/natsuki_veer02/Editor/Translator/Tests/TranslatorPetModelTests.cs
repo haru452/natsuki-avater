@@ -584,10 +584,9 @@ public class TranslatorPetModelTests
     [Test]
     public void Wait_SheStaysPut_UntilCalledBackOr20mAway()
     {
-        var inRange = Find("Pet_Root/Pet_Follow").GetComponents<VRCContactReceiver>().Single(r => r.parameter == C.InRangeParam);
-        Assert.AreEqual(20f, inRange.radius);
-        CollectionAssert.AreEqual(new[] { C.WearerContactTag }, inRange.collisionTags);
-        Assert.IsFalse(inRange.allowOthers);
+        // 20 m from her to the wearer (the prefab root), measured within VRChat's 3 m contact limit.
+        Assert.AreEqual(20f, TranslatorFarSenseTests.Reach(Find("Pet_Root/Pet_Follow"), C.InRangeParam, out var far), 0.01f);
+        Assert.AreEqual(prefab.transform, far);
 
         var layer = TranslatorPetCommands.WaitLayerName;
         Assert.AreEqual("Free", Layer(layer).defaultState.name);
