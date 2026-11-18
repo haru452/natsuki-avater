@@ -49,8 +49,14 @@ public class Settings
         try
         {
             var s = File.Exists(path) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(path)) ?? new Settings() : new Settings();
-            // Commands added since the file was saved get their default phrases.
-            foreach (var (command, phrases) in PetCommands.Defaults()) s.PetCommandWords.TryAdd(command, phrases);
+            // Commands added since the file was saved get their default phrases, and phrases the defaults now give to
+            // another command leave the old one (こっちむいて moved from FaceFront to LookAtMe and still turned her front).
+            var defaults = PetCommands.Defaults();
+            var owner = defaults.SelectMany(d => d.Value.Select(p => (Phrase: p, Command: d.Key)))
+                .GroupBy(x => x.Phrase).ToDictionary(g => g.Key, g => g.First().Command);
+            foreach (var (command, phrases) in s.PetCommandWords)
+                phrases.RemoveAll(p => owner.TryGetValue(p, out var o) && o != command);
+            foreach (var (command, phrases) in defaults) s.PetCommandWords.TryAdd(command, phrases);
             return s;
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)

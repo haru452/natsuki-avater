@@ -157,6 +157,22 @@ public class PetCommandsTests
     }
 
     [Fact]
+    public void PhrasesMovedToANewCommand_LeaveTheOldOne()
+    {
+        // Saved before LookAtMe existed: こっちむいて was FaceFront's, and still won over the new command.
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var path = Path.Combine(dir, "settings.json");
+            File.WriteAllText(path, "{\"PetCommandWords\":{\"FaceFront\":[\"まえむいて\",\"こっちむいて\",\"ふりむいて\",\"まえへ\"]}}");
+            var s = Settings.Load(path);
+            Assert.Equal(new[] { "まえむいて", "まえへ" }, s.PetCommandWords["FaceFront"]);
+            Assert.Equal(PetCommand.LookAtMe, PetCommands.Find("こっちむいて", "", s.PetCommandWords, s.PetCallNames));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void SettingsKeepTheirPhrases()
     {
         var dir = Directory.CreateTempSubdirectory().FullName;
