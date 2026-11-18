@@ -18,6 +18,8 @@ public class OwnVoice
     public const string ActiveParam = Kat.Prefix + "TranslatorActive";
     /// <summary>The avatar's 翻訳 toggle: off, the pet still listens for her name but nothing is translated or shown.</summary>
     public const string TranslateParam = Kat.Prefix + "TranslatorTranslate";
+    /// <summary>The avatar's 会話 toggle: off, she is not answered through Gemini (Settings.PetChat; also the C key).</summary>
+    public const string ChatParam = Kat.Prefix + "TranslatorChat";
     public const string AvatarChange = "/avatar/change";
     /// <summary>A recording older than this when its turn comes is skipped: the moment has passed.</summary>
     public const double StaleSeconds = 20;
@@ -66,11 +68,24 @@ public class OwnVoice
     public void OnOsc(string address, object[] args)
     {
         if (address == AvatarChange) { SetActive(false); return; }
-        if (args.Length == 0 || address is not (ActiveParam or TranslateParam)) return;
+        if (args.Length == 0 || address is not (ActiveParam or TranslateParam or ChatParam)) return;
         bool? on = args[0] switch { bool b => b, int i => i != 0, float f => f != 0, _ => null };
         if (on is not bool value) return;
         if (address == ActiveParam) SetActive(value);
+        else if (address == ChatParam) SetChatting(value);
         else SetTranslating(value);
+    }
+
+    /// <summary>Talking with her (Gemini) on or off: the avatar's 会話 toggle or the C key. True when it changed.</summary>
+    public bool SetChatting(bool on)
+    {
+        lock (gate)
+        {
+            if (on == settings.PetChat) return false;
+            settings.PetChat = on;
+        }
+        say(on ? "会話: オン" : "会話: オフ");
+        return true;
     }
 
     void SetTranslating(bool on)

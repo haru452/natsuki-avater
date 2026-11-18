@@ -93,6 +93,7 @@ static class Program
                     var from = new IPEndPoint(IPAddress.Any, 0);
                     var (address, oscArgs) = Osc.Parse(fromVrchat.Receive(ref from));
                     pipeline.OnOsc(address, oscArgs);
+                    if (address == OwnVoice.ChatParam) settings.Save(Settings.DefaultPath); // remembered for next time
                 }
                 catch (FormatException) { }
                 catch (SocketException) { if (stop.IsCancellationRequested) return; }
@@ -128,11 +129,11 @@ static class Program
                 vrchatSound.Update(phoneOpen); // VRChat's sound is heard only while the phone's page is open
                 screen.Show(new[]
                 {
-                    "VRC Translator PC（K: DeepL のキー / G: Gemini のキー / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
+                    "VRC Translator PC（K: DeepL のキー / G: Gemini のキー / C: 会話 / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
                     "",
                     "ペット:      " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「ペット」で切り替え）"),
                     "翻訳:        " + (pipeline.Translating ? "オン" : "オフ（名前を呼ぶと反応だけします）"),
-                    "会話:        " + (!settings.PetChat ? "オフ"
+                    "会話:        " + (!settings.PetChat ? "オフ（アバターの「会話」か C キーで切り替え）"
                         : settings.GeminiKey.Trim().Length == 0 ? "Gemini のキーがありません（G キーで入れてください）"
                         : "名前を呼ぶと、ほまれが英語で返事します（Gemini" + (chat.Model != null ? ": " + chat.Model : "") + "）"),
                     "マイク:      " + mic.State,
@@ -147,7 +148,7 @@ static class Program
                     "VRChat の音: " + vrchatSound.State,
                     $"CPU:         {cpu.Percent():0.0} %",
                 });
-                HandleKeys(settings, screen, recorder);
+                HandleKeys(settings, screen, recorder, pipeline);
             }
             stop.Token.WaitHandle.WaitOne(50);
         }
@@ -156,12 +157,16 @@ static class Program
         return 0;
     }
 
-    static void HandleKeys(Settings settings, Screen screen, SampleRecorder recorder)
+    static void HandleKeys(Settings settings, Screen screen, SampleRecorder recorder, OwnVoice pipeline)
     {
         while (!Console.IsInputRedirected && Console.KeyAvailable)
         {
             var key = Console.ReadKey(intercept: true).Key;
             if (key == ConsoleKey.R) recorder.On = !recorder.On; // saves each sentence's sound (to compare recognizers)
+            else if (key == ConsoleKey.C)
+            {
+                if (pipeline.SetChatting(!settings.PetChat)) settings.Save(Settings.DefaultPath);
+            }
             else if (key == ConsoleKey.L)
             {
                 settings.TargetLang = settings.TargetLang == Lang.ZH ? Lang.EN : Lang.ZH;

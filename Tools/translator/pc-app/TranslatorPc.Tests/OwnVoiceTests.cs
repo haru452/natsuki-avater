@@ -206,6 +206,21 @@ public class OwnVoiceTests
     }
 
     [Fact]
+    public void ChatToggle_TurnsTalkingWithHerOnAndOff()
+    {
+        var settings = new Settings();
+        var p = new OwnVoice(settings, stt, translator, display, new FakeKana(), (_, _, _) => { }, () => now, said.Add);
+        Assert.True(settings.PetChat, "on until switched off");
+        p.OnOsc(OwnVoice.ChatParam, new object[] { false });
+        Assert.False(settings.PetChat);
+        Assert.Equal(new[] { "会話: オフ" }, said);
+        Assert.False(p.SetChatting(false), "already off");
+        Assert.True(p.SetChatting(true));
+        Assert.True(settings.PetChat);
+        Assert.Equal(new[] { "会話: オフ", "会話: オン" }, said);
+    }
+
+    [Fact]
     public void ChineseTargetIsMarkedForTheChatbox()
     {
         var p = Make(Lang.ZH);
