@@ -103,11 +103,20 @@ static class Program
         using var mic = new MicSource(new FrameSink(pipeline.FeedFrame));
         using var vrchatSound = new VrchatSource(new FrameSink(others.FeedFrame));
         var cpu = new CpuMeter();
+        // Her name flag and the subtitle's timing run on their own: the screen's thread stops while text in the console
+        // window is selected (Windows holds the output), and she must not keep smiling then.
+        Background("pet", () =>
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                lock (pipeline.DisplayLock) display.Tick();
+                petCall.Tick();
+                stop.Token.WaitHandle.WaitOne(50);
+            }
+        });
         double nextScreen = 0;
         while (!stop.IsCancellationRequested)
         {
-            lock (pipeline.DisplayLock) display.Tick();
-            petCall.Tick();
             if (Now() >= nextScreen)
             {
                 nextScreen = Now() + 1;
@@ -270,8 +279,9 @@ sealed class Screen
 {
     readonly List<string> messages = new();
     readonly object gate = new();
+    readonly object writing = new();
     bool paused;
-    bool cleared;
+    volatile bool cleared;
 
     public void Say(string message)
     {
@@ -287,18 +297,27 @@ sealed class Screen
 
     public void Resume() { lock (gate) { paused = false; cleared = false; } }
 
+    /// <summary>
+    /// Writes outside the message lock: while text in the window is selected the write waits, and Say (called by the
+    /// translating threads) must not wait with it.
+    /// </summary>
     public void Show(string[] lines)
     {
+        List<string> recent;
         lock (gate)
         {
             if (paused || Console.IsOutputRedirected) return;
+            recent = messages.ToList();
+        }
+        lock (writing)
+        {
             if (!cleared) { Console.Clear(); cleared = true; }
             Console.SetCursorPosition(0, 0);
             // In columns (Japanese takes two), and no taller than the window: a wrapped or overlong screen scrolls
             // on every redraw and the heading piles up.
             int width = Math.Max(20, Console.WindowWidth - 1);
             var status = lines.Concat(new[] { "", "― 最近のできごと ―" }).ToList();
-            foreach (var l in ConsoleText.Lines(status, messages, Console.WindowHeight))
+            foreach (var l in ConsoleText.Lines(status, recent, Console.WindowHeight))
                 Console.WriteLine(ConsoleText.Fit(l, width));
         }
     }
