@@ -35,7 +35,9 @@ static class Program
         using var senseVoiceJa = new SenseVoice(modelDir, language: "ja");
         // Japanese is heard again by ReazonSpeech when it is there (much better at casual Japanese).
         string reazonDir = Path.Combine(exeDir, "models", "reazon");
-        using var reazon = ReazonSpeech.IsIn(reazonDir) ? new ReazonSpeech(reazonDir) : null;
+        using var reazon = ReazonSpeech.IsIn(reazonDir)
+            ? new ReazonSpeech(reazonDir, hotwords: settings.PetNames, hotwordsFile: Path.Combine(DataDir, "hotwords.txt"))
+            : null;
         using var kana = new MeCabKana();
         kana.ToKana("準備"); // load the dictionary now, not on the first sentence
         var recorder = new SampleRecorder(reazon != null
@@ -122,7 +124,8 @@ static class Program
                     "マイク:      " + mic.State,
                     "DeepL キー:  " + Settings.MaskKey(settings.DeepLKey),
                     "相手の言語:  " + (settings.TargetLang == Lang.ZH ? "中国語（チャットに出ます）" : "英語"),
-                    "音声認識:    " + (reazon != null ? "SenseVoice + 日本語は ReazonSpeech" : "SenseVoice"),
+                    "音声認識:    " + (reazon != null ? "SenseVoice + 日本語は ReazonSpeech" : "SenseVoice")
+                        + (reazon?.Hotwords.Count > 0 ? "（聞き取りやすくする名前: " + string.Join("・", reazon.Hotwords) + "）" : ""),
                     "声の保存:    " + (recorder.On ? $"オン（{recorder.Saved} 文、{SampleRecorder.Dir}）" : "オフ"),
                     "相手の声:    " + (phoneOpen
                         ? (settings.TranslateOthers ? "スマホに表示中（日本語以外を DeepL で訳しています）" : "スマホに表示中（話したそのまま）")
@@ -188,6 +191,13 @@ static class Program
         var heard = stt.Recognize(pcm);
         Console.WriteLine($"認識 {sw.Elapsed.TotalSeconds:0.00} 秒: [{heard.Lang}] {heard.Text}");
         if (heard.Lang == Lang.JA) Console.WriteLine("かな: " + kana.ToKana(heard.Text));
+        // What the pet would make of it (her name in any recognizer's text, the command in the chosen one).
+        var reading = heard.Lang == Lang.JA ? kana.ToKana(heard.Text) : "";
+        var also = string.Join(" ", heard.AllTexts.Skip(1));
+        bool name = PetCall.Heard(heard.Text, reading, settings.PetNames) || PetCall.Heard(also, "", settings.PetNames);
+        var command = PetCommands.Find(heard.Text, reading, settings.PetCommandWords, settings.PetNames);
+        Console.WriteLine($"ペット: 名前 {(name ? "あり" : "なし")} / 命令 {(command is PetCommand c ? PetCommands.Describe(c) : "なし")}"
+                          + (also.Length > 0 ? $"（もう一方の認識: {also}）" : ""));
         if (heard.Lang != Lang.JA)
         {
             Console.WriteLine("そのまま出します（日本語には訳しません）: " + heard.Text);

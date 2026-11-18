@@ -46,9 +46,10 @@ public class PetCall
     /// One recognized sentence: her name turns her (Call), and a command in it or in a sentence soon after is sent.
     /// Returns what happened, for the screen, or null when the sentence was not for her.
     /// </summary>
-    public string? Hear(string text, string kana, Settings settings)
+    /// <param name="also">other recognizers' text for the same speech: her name counts there too</param>
+    public string? Hear(string text, string kana, Settings settings, string also = "")
     {
-        bool name = Heard(text, kana, settings.PetNames);
+        bool name = Heard(text, kana, settings.PetNames) || (also.Length > 0 && Heard(also, "", settings.PetNames));
         double now = clock();
         if (name) Call();
         lock (gate)

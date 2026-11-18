@@ -117,6 +117,22 @@ public class SpeechChoiceTests
     }
 
     [Fact]
+    public void RefiningKeepsWhatBothHeard_SoTheNameIsNotLost()
+    {
+        var r = Refined(Lang.JA, "ほまれ 座 って。");
+        Assert.Equal(new[] { "音声入力の質が良くない。", "ほまれ 座 って。" }, r.AllTexts);
+    }
+
+    [Fact]
+    public void ReazonSpeechGetsHalfASecondOfSilenceFirst()
+    {
+        var padded = Segmenter.WithLeadIn(new short[] { 5, 6 }, 0.5);
+        Assert.Equal(Segmenter.Rate / 2 + 2, padded.Length);
+        Assert.All(padded.Take(Segmenter.Rate / 2), v => Assert.Equal(0, v));
+        Assert.Equal(new short[] { 5, 6 }, padded.Skip(Segmenter.Rate / 2));
+    }
+
+    [Fact]
     public void RefiningLeavesEnglishAlone()
     {
         Assert.Equal("Where are you from?", Refined(Lang.EN, "Where are you from?").Text);

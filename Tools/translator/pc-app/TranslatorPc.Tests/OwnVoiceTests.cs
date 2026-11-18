@@ -163,6 +163,19 @@ public class OwnVoiceTests
     }
 
     [Fact]
+    public void HerName_InAnyRecognizersText_CallsThePet()
+    {
+        stt.Answer = new(Lang.JA, "すわって", true, new[] { "すわって", "ほまれ 座 って。" }); // (the fake kana leaves kanji alone)
+        var sent = new List<string>();
+        var call = new PetCall(p => sent.Add(Osc.Parse(p).Address), () => now);
+        var p = new OwnVoice(new Settings(), stt, translator, display, new FakeKana(), (_, _, _) => { }, () => now, said.Add, call);
+        p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Equal(new[] { PetCall.CalledParam, PetCommands.SitParam }, sent);
+    }
+
+    [Fact]
     public void TranslationOff_StillHearsHerName_ButShowsAndSendsNothing()
     {
         var sent = new List<string>();

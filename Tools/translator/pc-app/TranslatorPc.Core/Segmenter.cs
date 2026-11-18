@@ -63,6 +63,15 @@ public class Segmenter
     public float Threshold => Math.Max(NoiseFloor, floorMin) * margin;
 
     /// <summary>Forget anything half-recorded (used when the toggle turns off).</summary>
+    /// <summary>The speech with this much silence before it (a recognizer that drops the first word wants it).</summary>
+    public static short[] WithLeadIn(short[] pcm, double seconds)
+    {
+        int lead = (int)(Rate * seconds);
+        var padded = new short[lead + pcm.Length];
+        Array.Copy(pcm, 0, padded, lead, pcm.Length);
+        return padded;
+    }
+
     public void Reset()
     {
         Recording = false;
@@ -110,7 +119,14 @@ public class Segmenter
     }
 }
 
-public record RecognizedSpeech(Lang Lang, string Text, bool IsSpeech);
+/// <param name="Heard">
+/// Every recognizer's text for this speech (Text first): the pet's name is looked for in all of them, so one
+/// recognizer missing it does not lose it.
+/// </param>
+public record RecognizedSpeech(Lang Lang, string Text, bool IsSpeech, IReadOnlyList<string>? Heard = null)
+{
+    public IReadOnlyList<string> AllTexts => Heard ?? new[] { Text };
+}
 
 public interface IRecognizer
 {
@@ -141,7 +157,8 @@ public class JaEnRecognizer : IRecognizer
         if (IsEnglishSentence(first)) return first;
         if (first.Lang == Lang.JA && !refineJapanese) return first;
         var again = japanese.Recognize(pcm);
-        return first.Lang == Lang.JA && !again.IsSpeech ? first : again;
+        var chosen = first.Lang == Lang.JA && !again.IsSpeech ? first : again;
+        return chosen with { Heard = new[] { chosen.Text, chosen == first ? again.Text : first.Text } };
     }
 
     static bool IsEnglishSentence(RecognizedSpeech r)

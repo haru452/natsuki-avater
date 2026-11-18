@@ -116,6 +116,15 @@ public class PetCommandsTests
     }
 
     [Fact]
+    public void HerName_CaughtByTheOtherRecognizer_StillCounts()
+    {
+        var call = Make();
+        // ReazonSpeech dropped the name ("座って"); SenseVoice had it ("ほまれ 座 って。").
+        Assert.StartsWith("ペットへの命令: 座る", call.Hear("座って", "すわって", S, also: "ほまれ 座 って。"));
+        Assert.Contains((PetCommands.SitParam, (object)true), sent);
+    }
+
+    [Fact]
     public void WithoutHerName_CommandsAreIgnored()
     {
         var call = Make();

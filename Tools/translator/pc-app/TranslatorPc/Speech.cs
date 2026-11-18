@@ -62,7 +62,31 @@ sealed class ReazonSpeech : IRecognizer, IDisposable
 
     public static bool IsIn(string modelDir) => File.Exists(Path.Combine(modelDir, Encoder));
 
-    public ReazonSpeech(string modelDir, int threads = 2)
+    /// <param name="hotwords">
+    /// Words to listen harder for (the pet's names: said alone or first, they were dropped or misheard — "ほまれ、座って"
+    /// came out as "座って"). Its tokens are single characters, so Japanese words go in as they are.
+    /// </param>
+    public ReazonSpeech(string modelDir, int threads = 2, IEnumerable<string>? hotwords = null, string? hotwordsFile = null)
+    {
+        var words = (hotwords ?? Array.Empty<string>()).Where(IsJapanese).Distinct().ToList();
+        try
+        {
+            recognizer = new OfflineRecognizer(Config(modelDir, threads, words, hotwordsFile));
+            Hotwords = words;
+        }
+        catch (Exception) when (words.Count > 0)
+        {
+            recognizer = new OfflineRecognizer(Config(modelDir, threads, new List<string>(), null)); // without them, rather than not at all
+            Hotwords = new List<string>();
+        }
+    }
+
+    /// <summary>The hotwords in use (empty when none, or when the model would not take them).</summary>
+    public IReadOnlyList<string> Hotwords { get; }
+
+    static bool IsJapanese(string word) => word.Any(c => c >= 0x3040 && c <= 0x30FF || c >= 0x4E00 && c <= 0x9FFF);
+
+    static OfflineRecognizerConfig Config(string modelDir, int threads, List<string> hotwords, string? hotwordsFile)
     {
         var config = new OfflineRecognizerConfig();
         config.ModelConfig.Transducer.Encoder = Path.Combine(modelDir, Encoder);
@@ -72,15 +96,34 @@ sealed class ReazonSpeech : IRecognizer, IDisposable
         config.ModelConfig.NumThreads = threads;
         config.ModelConfig.Provider = "cpu";
         config.DecodingMethod = "greedy_search";
-        recognizer = new OfflineRecognizer(config);
+        if (hotwords.Count > 0 && hotwordsFile != null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(hotwordsFile)!);
+            File.WriteAllLines(hotwordsFile, hotwords);
+            config.DecodingMethod = "modified_beam_search"; // hotwords need a beam search
+            config.MaxActivePaths = 4;
+            config.HotwordsFile = hotwordsFile;
+            config.HotwordsScore = HotwordsScore;
+            config.ModelConfig.ModelingUnit = "cjkchar";
+        }
+        return config;
     }
+
+    /// <summary>How strongly the hotwords are favoured (sherpa-onnx's default is 1.5).</summary>
+    public const float HotwordsScore = 2.0f;
 
     public RecognizedSpeech Recognize(short[] pcm)
     {
-        var text = SenseVoice.Decode(recognizer, gate, pcm);
+        var text = SenseVoice.Decode(recognizer, gate, Segmenter.WithLeadIn(pcm, LeadInSeconds));
         bool speech = SenseVoice.IsSpeech(text);
         return new RecognizedSpeech(speech ? Lang.JA : Lang.NONE, text, speech);
     }
+
+    /// <summary>
+    /// Half a second of silence before the speech: without it ReazonSpeech dropped the first word, and the
+    /// recordings start just as the speaking does ("ほまれ、座って" came out as "座って"; padded, it came out whole).
+    /// </summary>
+    const double LeadInSeconds = 0.5;
 
     public void Dispose() => recognizer.Dispose();
 }

@@ -158,7 +158,9 @@ public class OwnVoice
         if (petCall != null)
         {
             string? reaction = null;
-            IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings));
+            // Her name in any recognizer's text (the other one may have caught it), the command in the chosen one.
+            var also = string.Join(" ", heard.AllTexts.Skip(1));
+            IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings, also));
             if (reaction != null) say(reaction);
         }
         bool translating;
