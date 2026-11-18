@@ -141,6 +141,28 @@ public class OwnVoiceTests
     }
 
     [Fact]
+    public void HerName_CallsThePet_BeforeTranslating()
+    {
+        stt.Answer = new(Lang.JA, "誉、おいで", true);
+        var sent = new List<string>();
+        int translatedWhenCalled = -1;
+        var call = new PetCall(p => { sent.Add(Osc.Parse(p).Address); translatedWhenCalled = translator.Calls.Count; }, () => now);
+        var p = new OwnVoice(new Settings(), stt, translator, display, new FakeKana(),
+            (_, _, _) => { }, () => now, said.Add, call);
+        p.OnOsc(OwnVoice.ActiveParam, new object[] { true });
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Equal(new[] { PetCall.CalledParam }, sent);
+        Assert.Equal(0, translatedWhenCalled);
+        Assert.Contains(said, s => s.StartsWith("名前を呼ばれました"));
+
+        stt.Answer = new(Lang.JA, "おはよう", true);
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Single(sent);
+    }
+
+    [Fact]
     public void ChineseTargetIsMarkedForTheChatbox()
     {
         var p = Make(Lang.ZH);

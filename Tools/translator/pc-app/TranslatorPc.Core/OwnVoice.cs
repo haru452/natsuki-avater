@@ -30,14 +30,16 @@ public class OwnVoice
     readonly Action<Lang, string, string> log;
     readonly Func<double> clock;
     readonly Action<string> say;
+    readonly PetCall? petCall;
     readonly object gate = new();
     readonly Segmenter segmenter = new(SegmenterSettings.ForPcMic());
     readonly BlockingCollection<Recording> queue = new();
     int generation; // bumped whenever listening stops, so older recordings are dropped
 
     public OwnVoice(Settings settings, IRecognizer stt, ITranslator translator, IDisplay display, IKana kana,
-        Action<Lang, string, string> log, Func<double> clock, Action<string> say)
+        Action<Lang, string, string> log, Func<double> clock, Action<string> say, PetCall? petCall = null)
     {
+        this.petCall = petCall;
         this.settings = settings;
         this.stt = stt;
         this.translator = translator;
@@ -132,6 +134,14 @@ public class OwnVoice
             return;
         }
         var source = heard.Lang;
+        var kanaOriginal = source == Lang.JA ? kana.ToKana(heard.Text) : "";
+        // Her name: she reacts at once, without waiting for DeepL.
+        if (petCall != null && PetCall.Heard(heard.Text, kanaOriginal, settings.PetNames))
+        {
+            bool called = false;
+            IfCurrent(gen, () => { petCall.Call(); called = true; });
+            if (called) say("名前を呼ばれました: " + heard.Text);
+        }
         // English is shown as it is (no Japanese anywhere: the wearer did not want it on screen).
         var target = source == Lang.JA ? settings.TargetLang : Lang.EN;
         lock (gate) display.ChatboxOnly = target != Lang.EN;
@@ -161,7 +171,7 @@ public class OwnVoice
             return;
         }
         var result = new TranslationResult(source, target, heard.Text, translation,
-            KanaOriginal: source == Lang.JA ? kana.ToKana(heard.Text) : "",
+            KanaOriginal: kanaOriginal,
             KanaTranslation: target == Lang.JA ? kana.ToKana(translation) : "");
         try { log(source, heard.Text, translation); }
         catch (IOException e) { say("記録できませんでした: " + e.GetType().Name); }

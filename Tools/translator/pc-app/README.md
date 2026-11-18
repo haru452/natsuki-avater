@@ -15,6 +15,10 @@ PC のマイク → 音声認識（SenseVoice、日本語は ReazonSpeech で聞
 3. 初回だけ: **K** を押してキーを貼り付け、Enter（キーは `%APPDATA%\VRCTranslatorPC\settings.json` に保存。画面には出ません）
 4. VRChat でアバターの「翻訳」をオンにして話す
 
+翻訳がオンのあいだに **ペットの名前（誉・ほまれ／なつき）を呼ぶと、ペットが振り向いて笑います**（DeepL を待たずにすぐ）。
+名前は `settings.json` の `PetNames` で変えられます（ひらがな・カタカナ・漢字の読み・ローマ字のどれでも拾います）。
+アバター側は、翻訳ペットのプレハブを作り直したもの（パラメータ `TranslatorPetCalled`）が要ります。
+
 キー: **K** = DeepL のキー、**L** = 相手の言語（英語 / 中国語）、**R** = 声の保存（オン / オフ）、**Ctrl+C** = 終わる。
 
 声の保存をオンにしているあいだだけ、話した 1 文ごとの音声を `%APPDATA%\VRCTranslatorPC\samples\` に WAV で保存します

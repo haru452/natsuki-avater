@@ -66,7 +66,8 @@ static class Program
         double Now() => clock.Elapsed.TotalSeconds;
         var display = new KatDisplay(Send, settings.Display, settings.KatSync, settings.ShowOriginal, Now, onEvent: screen.Say);
         var log = new TranslationLog(Path.Combine(DataDir, "translation_log.tsv"));
-        var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say);
+        var petCall = new PetCall(Send, Now);
+        var pipeline = new OwnVoice(settings, recorder, deepl, display, kana, log.Append, Now, screen.Say, petCall);
 
         var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
@@ -93,6 +94,7 @@ static class Program
         while (!stop.IsCancellationRequested)
         {
             lock (pipeline.DisplayLock) display.Tick();
+            petCall.Tick();
             if (Now() >= nextScreen)
             {
                 nextScreen = Now() + 1;

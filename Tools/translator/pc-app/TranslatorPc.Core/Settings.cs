@@ -14,6 +14,8 @@ public class Settings
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public DisplayMode Display { get; set; } = DisplayMode.KAT;
     public int KatSync { get; set; } = 8;
+    /// <summary>Saying one of these makes the pet turn and smile (PetCall): Homare (誉) and Natsuki.</summary>
+    public List<string> PetNames { get; set; } = new() { "ほまれ", "誉", "homare", "なつき", "natsuki" };
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCTranslatorPC", "settings.json");
