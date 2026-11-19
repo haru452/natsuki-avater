@@ -54,12 +54,13 @@ public class PetCall
     /// Returns what happened, for the screen, or null when the sentence was not for her.
     /// </summary>
     /// <param name="also">other recognizers' text for the same speech: her name counts there too</param>
-    public string? Hear(string text, string kana, Settings settings, string also = "")
+    /// <param name="react">false: her name only opens the moment for a command; she does not turn and smile</param>
+    public string? Hear(string text, string kana, Settings settings, string also = "", bool react = true)
     {
         LastWasCall = false;
         bool name = Heard(text, kana, settings) || (also.Length > 0 && Heard(also, "", settings));
         double now = clock();
-        if (name) Call();
+        if (name && react) Call();
         lock (gate)
         {
             if (name) nameAt = now;
@@ -68,7 +69,7 @@ public class PetCall
             if (command is not PetCommand c)
             {
                 LastWasCall = name;
-                return name ? "名前を呼ばれました: " + text : null;
+                return name && react ? "名前を呼ばれました: " + text : null;
             }
             foreach (var (address, value) in PetCommands.Parameters(c)) send(Osc.Message(address, value));
             nameAt = null; // one command per call: later sentences are for the people around, not for her

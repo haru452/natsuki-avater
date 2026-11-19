@@ -176,7 +176,7 @@ public class OwnVoiceTests
     }
 
     [Fact]
-    public void TranslationOff_StillHearsHerName_ButShowsAndSendsNothing()
+    public void TranslationAndTalkOff_OnlyCommandsAreHeard_NothingShownOrSent()
     {
         var sent = new List<string>();
         var call = new PetCall(p => sent.Add(Osc.Parse(p).Address), () => now);
@@ -188,10 +188,15 @@ public class OwnVoiceTests
         Assert.False(p.Translating);
         Assert.Equal(new[] { "clear" }, display.Events);
 
+        Assert.True(p.CommandsOnly, "no Gemini key: not talking either");
         stt.Answer = new(Lang.JA, "誉、元気？", true);
         Speak(p);
         p.ProcessNext(0);
-        Assert.Equal(new[] { PetCall.CalledParam }, sent);
+        Assert.Empty(sent); // her name alone does not turn her
+        stt.Answer = new(Lang.JA, "誉、すわって", true);
+        Speak(p);
+        p.ProcessNext(0);
+        Assert.Equal(new[] { PetCommands.SitParam }, sent);
         stt.Answer = new(Lang.JA, "おはよう", true);
         Speak(p);
         p.ProcessNext(0);

@@ -93,7 +93,7 @@ static class Program
                     var from = new IPEndPoint(IPAddress.Any, 0);
                     var (address, oscArgs) = Osc.Parse(fromVrchat.Receive(ref from));
                     pipeline.OnOsc(address, oscArgs);
-                    if (address == OwnVoice.ChatParam) settings.Save(Settings.DefaultPath); // remembered for next time
+                    if (address is OwnVoice.ChatParam or OwnVoice.TranslateParam) settings.Save(Settings.DefaultPath); // remembered for next time
                 }
                 catch (FormatException) { }
                 catch (SocketException) { if (stop.IsCancellationRequested) return; }
@@ -129,10 +129,10 @@ static class Program
                 vrchatSound.Update(phoneOpen); // VRChat's sound is heard only while the phone's page is open
                 screen.Show(new[]
                 {
-                    "VRC Translator PC（K: DeepL のキー / G: Gemini のキー / C: 会話 / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
+                    "VRC Translator PC（K: DeepL のキー / G: Gemini のキー / C: 会話 / T: 翻訳 / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
                     "",
                     "ペット:      " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「ペット」で切り替え）"),
-                    "翻訳:        " + (pipeline.Translating ? "オン" : "オフ（名前を呼ぶと反応だけします）"),
+                    "翻訳:        " + (pipeline.Translating ? "オン" : pipeline.CommandsOnly ? "オフ（会話もオフ: 命令だけ聞いています）" : "オフ"),
                     "会話:        " + (!settings.PetChat ? "オフ（アバターの「会話」か C キーで切り替え）"
                         : settings.GeminiKey.Trim().Length == 0 ? "Gemini のキーがありません（G キーで入れてください）"
                         : "オン: 話したことは全部ほまれへ。英語で返事し、こっちを向きます。翻訳はしません（Gemini" + (chat.Model != null ? ": " + chat.Model : "") + "）"),
@@ -166,6 +166,10 @@ static class Program
             else if (key == ConsoleKey.C)
             {
                 if (pipeline.SetChatting(!settings.PetChat)) settings.Save(Settings.DefaultPath);
+            }
+            else if (key == ConsoleKey.T)
+            {
+                if (pipeline.SetTranslating(!settings.Translate)) settings.Save(Settings.DefaultPath);
             }
             else if (key == ConsoleKey.L)
             {

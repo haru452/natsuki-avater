@@ -9,8 +9,16 @@ public class Settings
     public string DeepLKey { get; set; } = "";
     /// <summary>For talking with her (PetChat): the Gemini API key, entered with G.</summary>
     public string GeminiKey { get; set; } = "";
-    /// <summary>Called by name (not told to do something), she answers in English on her bubble (needs GeminiKey).</summary>
+    /// <summary>
+    /// Talking with her (the 会話 toggle or C): whatever is said goes to her and she answers in English (needs GeminiKey).
+    /// </summary>
     public bool PetChat { get; set; } = true;
+    /// <summary>
+    /// Translating (the avatar's 翻訳 toggle or T), remembered: VRChat does not say the toggle's state when the app
+    /// starts, so after a restart the app went on translating while the avatar's toggle was off.
+    /// Off together with PetChat, she listens only for commands.
+    /// </summary>
+    public bool Translate { get; set; } = true;
     /// <summary>What Japanese is translated into: EN or ZH.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public Lang TargetLang { get; set; } = Lang.EN;

@@ -63,7 +63,7 @@ public class OwnVoice
     public object DisplayLock => gate;
 
     /// <summary>Translate and show what is said (the avatar's 翻訳 toggle; on until the avatar says otherwise).</summary>
-    public bool Translating { get; private set; } = true;
+    public bool Translating => settings.Translate;
 
     public void OnOsc(string address, object[] args)
     {
@@ -95,16 +95,21 @@ public class OwnVoice
         return true;
     }
 
-    void SetTranslating(bool on)
+    /// <summary>Translating on or off: the avatar's 翻訳 toggle or the T key. True when it changed.</summary>
+    public bool SetTranslating(bool on)
     {
         lock (gate)
         {
-            if (on == Translating) return;
-            Translating = on;
+            if (on == settings.Translate) return false;
+            settings.Translate = on;
             if (!on) display.Clear();
         }
-        say(on ? "翻訳: オン" : "翻訳: オフ（名前だけ聞いています）");
+        say(on ? "翻訳: オン" : "翻訳: オフ");
+        return true;
     }
+
+    /// <summary>Translating and talking both off: only commands are listened for (her name does not turn her).</summary>
+    public bool CommandsOnly => !Translating && !Chatting;
 
     void SetActive(bool on)
     {
@@ -212,7 +217,8 @@ public class OwnVoice
             string? reaction = null;
             // Her name in any recognizer's text (the other one may have caught it), the command in the chosen one.
             var also = string.Join(" ", heard.AllTexts.Skip(1));
-            IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings, also));
+            bool react = !CommandsOnly;
+            IfCurrent(gen, () => reaction = petCall.Hear(heard.Text, kanaOriginal, settings, also, react));
             if (reaction != null) say(reaction);
             commanded = reaction != null && !petCall.LastWasCall;
         }
