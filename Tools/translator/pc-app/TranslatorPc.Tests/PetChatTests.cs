@@ -36,6 +36,7 @@ public class GeminiTests
         Assert.Contains("Homare", system);
         Assert.Contains("English", system);
         Assert.Contains("cheeky", system);
+        Assert.Contains("little sister", system);
         var contents = doc.RootElement.GetProperty("contents");
         Assert.Equal(3, contents.GetArrayLength());
         Assert.Equal(new[] { "user", "model", "user" }, contents.EnumerateArray().Select(c => c.GetProperty("role").GetString()));
