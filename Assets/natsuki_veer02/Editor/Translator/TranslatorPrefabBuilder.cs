@@ -69,7 +69,7 @@ public static class TranslatorPrefabBuilder
                 TranslatorReactionsBuilder.AddPatZone(head, new Vector3(0, 0.08f, 0));
                 if (C.ShowNameTag) TranslatorNameTag.Add(head, robot.transform, outputDir);
                 TranslatorReactionsBuilder.AddHeadLook(head, robot.transform, gaze.transform);
-                TranslatorPetGaze.Add(root.transform, gaze.transform, head);
+                TranslatorPetPose.Add(pet.transform, root.transform, hop.transform);
                 TranslatorPetHeadTurn.Add(hop.transform, gaze.transform);
             }
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);
@@ -157,7 +157,7 @@ public static class TranslatorPrefabBuilder
         if (mirror) list.Add(Param(C.SitParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.WaitParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.TurnParam, ParameterSyncType.Bool, saved: false));
-        if (mirror) list.Add(Param(C.GazeAdjustParam, ParameterSyncType.Bool, saved: false));
+        if (mirror) list.Add(Param(C.PoseParam, ParameterSyncType.Bool, saved: false));
         if (mirror) list.Add(Param(C.FaceParam, ParameterSyncType.Bool, saved: false));
         return list;
     }
@@ -195,7 +195,7 @@ public static class TranslatorPrefabBuilder
             Toggle(C.LocalAILabel, C.LocalAIParam),
         };
         if (mirror) controls.Add(Toggle(C.MirrorLabel, C.MirrorParam));
-        if (mirror) controls.Add(Toggle(C.GazeAdjustLabel, C.GazeAdjustParam));
+        if (mirror) controls.Add(Toggle(C.PoseLabel, C.PoseParam));
         var sub = SaveMenu(outputDir + "/" + SubMenuAssetName, controls);
         return SaveMenu(outputDir + "/" + MenuAssetName, new List<VRCExpressionsMenu.Control>
         {

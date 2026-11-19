@@ -87,7 +87,7 @@ public class TranslatorPetModelTests
     public void Motion_BodyLookPatBlink_NoHopNoSleep()
     {
         CollectionAssert.AreEqual(new[] { P.BodyLayerName, M.LookLayerName, M.PatLayerName, TranslatorPetWalker.BlinkLayerName, P.SideLayerName,
-                TranslatorPetCommands.WaitLayerName, TranslatorPetCommands.TurnLayerName, TranslatorPetGaze.LayerName },
+                TranslatorPetCommands.WaitLayerName, TranslatorPetCommands.TurnLayerName, TranslatorPetPose.LayerName },
             c.layers.Select(l => l.name));
         Assert.IsTrue(c.layers.SelectMany(l => l.stateMachine.states).All(s => !s.state.writeDefaultValues));
         // A state with no motion in a Write Defaults off layer froze the whole avatar after she nodded (smiling, and
@@ -241,8 +241,9 @@ public class TranslatorPetModelTests
         Assert.AreEqual(0f, ahead.localPosition.x, "straight ahead: the same whichever side she waits on");
         var aim = Find("Pet_Root/Pet_Follow/Pet_Hop").GetComponent<VRCAimConstraint>();
         Assert.IsNotNull(aim);
-        CollectionAssert.AreEqual(new[] { Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target"), ahead },
-            Enumerable.Range(0, aim.Sources.Count).Select(i => aim.Sources[i].SourceTransform));
+        CollectionAssert.AreEqual(new[] { Find("Pet_Root/Pet_Heading/Pet_Side/Pet_Target"), ahead,
+                Find("Pet_Root/" + TranslatorPetPose.DirName + "/" + TranslatorPetPose.AheadName) },
+            Enumerable.Range(0, aim.Sources.Count).Select(i => aim.Sources[i].SourceTransform), "and the way kept by 向き合わせ");
         Assert.IsFalse(aim.AffectsRotationX);
         Assert.IsFalse(aim.AffectsRotationZ);
     }

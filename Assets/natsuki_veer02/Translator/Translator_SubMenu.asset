@@ -64,11 +64,11 @@ MonoBehaviour:
     subMenu: {fileID: 0}
     subParameters: []
     labels: []
-  - name: "\u8996\u7DDA\u8ABF\u7BC0"
+  - name: "\u5411\u304D\u5408\u308F\u305B"
     icon: {fileID: 0}
     type: 102
     parameter:
-      name: TranslatorPetGazeAdjust
+      name: TranslatorPetPose
     value: 1
     style: 0
     subMenu: {fileID: 0}

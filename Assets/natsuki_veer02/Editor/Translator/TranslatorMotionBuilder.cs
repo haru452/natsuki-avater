@@ -69,8 +69,7 @@ public static class TranslatorMotionBuilder
         {
             TranslatorPetCommands.AddTurnLayer(controller, NewLayer(controller, TranslatorPetCommands.TurnLayerName), outputDir);
             TranslatorPetCommands.NoLookWhileTurned(lookLayer);
-            TranslatorPetGaze.AddLayer(controller, NewLayer(controller, TranslatorPetGaze.LayerName),
-                TranslatorPetModel.HeadPath(petModel) + "/" + TranslatorPetGaze.AimName, outputDir);
+            TranslatorPetPose.AddLayer(controller, NewLayer(controller, TranslatorPetPose.LayerName), outputDir);
         }
         if (petModel == null)
             TranslatorSleepBuilder.AddLayer(controller, NewLayer(controller, TranslatorSleepBuilder.LayerName), outputDir);
