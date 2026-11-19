@@ -73,7 +73,7 @@ public class PetCall
             }
             foreach (var (address, value) in PetCommands.Parameters(c)) send(Osc.Message(address, value));
             nameAt = null; // one command per call: later sentences are for the people around, not for her
-            return $"ペットへの命令: {PetCommands.Describe(c)}（{text}）";
+            return $"妹への命令: {PetCommands.Describe(c)}（{text}）";
         }
     }
 

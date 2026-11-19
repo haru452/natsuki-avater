@@ -1,5 +1,5 @@
 ﻿// translator_pc.exe: VRC Translator on the PC alone.
-// PC microphone (only while the avatar's ペット toggle is on; its 翻訳 toggle turns translating on and off) → SenseVoice → DeepL → the pet's KAT text / chatbox.
+// PC microphone (only while the avatar's 妹 toggle is on; its 翻訳 toggle turns translating on and off) → SenseVoice → DeepL → the pet's KAT text / chatbox.
 // VRChat → us on 9001 (the toggle), us → VRChat on 9000.
 using System.Diagnostics;
 using System.Net;
@@ -123,7 +123,7 @@ static class Program
             if (Now() >= nextScreen)
             {
                 nextScreen = Now() + 1;
-                mic.Update(pipeline.Active); // the microphone is open only while the pet is out (ペット)
+                mic.Update(pipeline.Active); // the microphone is open only while the pet is out (妹)
                 bool phoneOpen = feed.HasViewer;
                 others.Listening = phoneOpen;
                 vrchatSound.Update(phoneOpen); // VRChat's sound is heard only while the phone's page is open
@@ -246,7 +246,7 @@ static class Program
         var also = string.Join(" ", heard.AllTexts.Skip(1));
         bool name = PetCall.Heard(heard.Text, reading, settings) || PetCall.Heard(also, "", settings);
         var command = PetCommands.Find(heard.Text, reading, settings.PetCommandWords, settings.PetCallNames);
-        Console.WriteLine($"ペット: 名前 {(name ? "あり" : "なし")} / 命令 {(command is PetCommand c ? PetCommands.Describe(c) : "なし")}"
+        Console.WriteLine($"妹: 名前 {(name ? "あり" : "なし")} / 命令 {(command is PetCommand c ? PetCommands.Describe(c) : "なし")}"
                           + (also.Length > 0 ? $"（もう一方の認識: {also}）" : ""));
         if (heard.Lang != Lang.JA)
         {

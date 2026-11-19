@@ -5,7 +5,7 @@ public class ConsoleTextTests
     [Theory]
     [InlineData("abc", 3)]
     [InlineData("翻訳", 4)]          // Japanese takes two columns each
-    [InlineData("ペット: オン", 12)]
+    [InlineData("妹: オン", 8)]
     [InlineData("（）", 4)]          // full-width brackets too
     [InlineData("ｱ", 1)]            // half-width katakana: one
     public void Columns(string text, int columns) => Assert.Equal(columns, ConsoleText.Columns(text));

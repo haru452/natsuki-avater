@@ -101,7 +101,7 @@ public class PetCommandsTests
     public void NameAndCommandInOneSentence()
     {
         var call = Make();
-        Assert.StartsWith("ペットへの命令: 座る", call.Hear("誉、座って", "ほまれ、すわって", S));
+        Assert.StartsWith("妹への命令: 座る", call.Hear("誉、座って", "ほまれ、すわって", S));
         Assert.Equal(new[] { (PetCall.CalledParam, (object)true), (PetCommands.SitParam, true) }, sent);
     }
 
@@ -111,7 +111,7 @@ public class PetCommandsTests
         var call = Make();
         Assert.StartsWith("名前を呼ばれました", call.Hear("ほまれ", "ほまれ", S));
         now = PetCall.CommandSeconds - 0.5;
-        Assert.StartsWith("ペットへの命令: 待つ", call.Hear("待ってて", "まってて", S));
+        Assert.StartsWith("妹への命令: 待つ", call.Hear("待ってて", "まってて", S));
         Assert.Contains((PetCommands.WaitParam, (object)true), sent);
         sent.Clear();
         Assert.Null(call.Hear("座って", "すわって", S)); // one command per call
@@ -129,7 +129,7 @@ public class PetCommandsTests
     {
         var call = Make();
         // ReazonSpeech dropped the name ("座って"); SenseVoice had it ("ほまれ 座 って。").
-        Assert.StartsWith("ペットへの命令: 座る", call.Hear("座って", "すわって", S, also: "ほまれ 座 って。"));
+        Assert.StartsWith("妹への命令: 座る", call.Hear("座って", "すわって", S, also: "ほまれ 座 って。"));
         Assert.Contains((PetCommands.SitParam, (object)true), sent);
     }
 
