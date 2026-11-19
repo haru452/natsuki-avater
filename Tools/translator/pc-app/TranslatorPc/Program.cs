@@ -131,7 +131,7 @@ static class Program
                 {
                     "VRC Translator PC（K: DeepL のキー / G: Gemini のキー / C: 会話 / T: 翻訳 / L: 相手の言語 / R: 声の保存 / Ctrl+C: 終わる）",
                     "",
-                    "ペット:      " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「ペット」で切り替え）"),
+                    "妹:          " + (pipeline.Active ? "オン（聞いています）" : "オフ（アバターの「妹」で切り替え）"),
                     "翻訳:        " + (pipeline.Translating ? "オン" : pipeline.CommandsOnly ? "オフ（会話もオフ: 命令だけ聞いています）" : "オフ"),
                     "会話:        " + (!settings.PetChat ? "オフ（アバターの「会話」か C キーで切り替え）"
                         : settings.GeminiKey.Trim().Length == 0 ? "Gemini のキーがありません（G キーで入れてください）"
