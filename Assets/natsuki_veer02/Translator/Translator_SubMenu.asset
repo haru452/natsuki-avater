@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Parameters: {fileID: 0}
   controls:
-  - name: "\u30DA\u30C3\u30C8"
+  - name: "\u59B9"
     icon: {fileID: 0}
     type: 102
     parameter:

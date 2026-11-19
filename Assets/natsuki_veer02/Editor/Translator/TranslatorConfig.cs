@@ -265,7 +265,7 @@ public static class TranslatorConfig
 
     public const string MenuLabel = "翻訳";
     /// <summary>The main toggle: the pet comes out and the PC app listens (for her name, and to translate).</summary>
-    public const string ActiveLabel = "ペット";
+    public const string ActiveLabel = "妹";
     /// <summary>
     /// Translation on or off while the pet is out (read only by the PC app: local, not synced, remembered, on by
     /// default). Off, the app still listens for her name but shows and sends nothing.

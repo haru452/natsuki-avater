@@ -282,7 +282,7 @@ public class TranslatorPrefabTests
         var toggles = sub.subMenu.controls;
         Assert.AreEqual(4, toggles.Count);
         Assert.IsTrue(toggles.All(t => t.type == VRCExpressionsMenu.Control.ControlType.Toggle));
-        Assert.AreEqual(("ペット", C.ActiveParam), (toggles[0].name, toggles[0].parameter.name));
+        Assert.AreEqual(("妹", C.ActiveParam), (toggles[0].name, toggles[0].parameter.name));
         Assert.AreEqual(("翻訳", C.TranslateParam), (toggles[1].name, toggles[1].parameter.name));
         Assert.AreEqual(("会話", C.ChatParam), (toggles[2].name, toggles[2].parameter.name));
         Assert.AreEqual(("ローカルAI", C.LocalAIParam), (toggles[3].name, toggles[3].parameter.name));
