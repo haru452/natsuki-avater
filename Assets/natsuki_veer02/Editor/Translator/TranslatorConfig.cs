@@ -195,6 +195,14 @@ public static class TranslatorConfig
     /// so she looks down at a crouching wearer); less than all the way, so her neck never bends too far.
     /// </summary>
     public const float HeadLookWeight = 0.7f;
+    /// <summary>
+    /// Looking at the wearer (TranslatorPetHeadTurn): within this many degrees of where her body faces, only her head
+    /// turns; from BodyTurnDegrees round, her body turns to them as well (blending between the two).
+    /// </summary>
+    public const float HeadTurnDegrees = 50f;
+    public const float BodyTurnDegrees = 80f;
+    /// <summary>How far round the wearer is (a proximity contact, worked out on every screen): 1 ahead, 0 from BodyTurnDegrees.</summary>
+    public const string InViewParam = "TranslatorPetInView";
 
     // Petting the head (anyone's hand) makes hearts.
     public const string PatParam = "TranslatorPetPat";

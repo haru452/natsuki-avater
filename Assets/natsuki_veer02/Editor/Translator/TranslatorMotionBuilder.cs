@@ -49,7 +49,14 @@ public static class TranslatorMotionBuilder
         }
         var lookLayer = BuildTwoStateLayer(controller, LookLayerName, outputDir, "Away", away, "Look", look,
             C.LookedParam, C.LookTurnSeconds, holdSeconds: 0f);
-        if (petModel != null) AddCalled(controller, lookLayer, look, outputDir);
+        if (petModel != null)
+        {
+            // Her head alone turns while the wearer is not far round; her body too beyond that (TranslatorPetHeadTurn).
+            var called = AddCalled(controller, lookLayer, look, outputDir);
+            called.motion = TranslatorPetHeadTurn.Blend(controller, "Called", (AnimationClip)called.motion, RobotPath, outputDir);
+            var looking = lookLayer.states.Select(s => s.state).Single(s => s.name == "Look");
+            looking.motion = TranslatorPetHeadTurn.Blend(controller, "Look", look, RobotPath, outputDir);
+        }
         if (petModel != null) TranslatorPetCommands.AddFacing(controller, lookLayer);
         var calm = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 0f, Frame);
         var hearts = WeightClip(typeof(ParticleSystem), HeartsPath, "EmissionModule.enabled", 1f, C.HeartsMinSeconds);
@@ -109,7 +116,7 @@ public static class TranslatorMotionBuilder
     /// Called by name: from Away she turns to the wearer as for a look, for CalledSeconds, then turns back
     /// (or keeps looking, if the wearer is looking at her by then). The eye layer smiles (TranslatorPetEyes).
     /// </summary>
-    static void AddCalled(AnimatorController controller, AnimatorStateMachine sm, AnimationClip look, string outputDir)
+    static AnimatorState AddCalled(AnimatorController controller, AnimatorStateMachine sm, AnimationClip look, string outputDir)
     {
         controller.AddParameter(C.CalledParam, AnimatorControllerParameterType.Bool);
         var states = sm.states.Select(s => s.state).ToArray();
@@ -134,6 +141,7 @@ public static class TranslatorMotionBuilder
         back.hasExitTime = true;
         back.exitTime = 1f;
         back.duration = C.LookTurnSeconds;
+        return called;
     }
 
     /// <summary>Off/on layer on a Bool. Fades over fadeSeconds; once on, stays at least holdSeconds.</summary>

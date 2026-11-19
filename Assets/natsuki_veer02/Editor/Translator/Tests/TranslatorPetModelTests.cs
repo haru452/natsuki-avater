@@ -43,7 +43,8 @@ public class TranslatorPetModelTests
     SkinnedMeshRenderer RobotMesh(string mesh) => Find(RobotPath + "/" + mesh)?.GetComponent<SkinnedMeshRenderer>();
     AnimatorStateMachine Layer(string name) => c.layers.Single(l => l.name == name).stateMachine;
     AnimatorState State(string layer, string name) => Layer(layer).states.Select(s => s.state).Single(s => s.name == name);
-    static AnimationClip Clip(AnimatorState s) => (AnimationClip)s.motion;
+    /// <summary>The state's clip; for a look (a blend, TranslatorPetHeadTurn), the one with her body turned too.</summary>
+    static AnimationClip Clip(AnimatorState s) => s.motion as AnimationClip ?? (AnimationClip)((BlendTree)s.motion).children[0].motion;
 
     static string Transitions(AnimatorState s) => string.Join(" | ", s.transitions.Select(t =>
         t.destinationState.name + ":" + string.Join("&", t.conditions.Select(k => k.parameter + k.mode + k.threshold))

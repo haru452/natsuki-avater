@@ -70,6 +70,7 @@ public static class TranslatorPrefabBuilder
                 if (C.ShowNameTag) TranslatorNameTag.Add(head, robot.transform, outputDir);
                 TranslatorReactionsBuilder.AddHeadLook(head, robot.transform, gaze.transform);
                 TranslatorPetGaze.Add(root.transform, gaze.transform, head);
+                TranslatorPetHeadTurn.Add(hop.transform, gaze.transform);
             }
             TranslatorReactionsBuilder.AddHearts(follow.transform, outputDir).transform.localPosition = new Vector3(0, top, 0);
             if (petModel == null) TranslatorSleepBuilder.AddZzz(follow.transform, outputDir);
